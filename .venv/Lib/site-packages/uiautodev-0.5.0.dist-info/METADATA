@@ -1,0 +1,85 @@
+Metadata-Version: 2.1
+Name: uiautodev
+Version: 0.5.0
+Summary: Mobile UI Automation, include UI hierarchy inspector, script recorder
+Home-page: https://uiauto.dev
+License: MIT
+Author: codeskyblue
+Author-email: codeskyblue@gmail.com
+Requires-Python: >=3.8,<4.0
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Dist: adbutils (>=2.7.0,<3.0.0)
+Requires-Dist: click (>=8.1.7,<9.0.0)
+Requires-Dist: construct
+Requires-Dist: fastapi (>=0.111.0,<0.112.0)
+Requires-Dist: httpx
+Requires-Dist: lxml
+Requires-Dist: pillow
+Requires-Dist: poetry (>=1.8.2,<2.0.0)
+Requires-Dist: pydantic (>=2.6,<3.0)
+Requires-Dist: pygments (>=2)
+Requires-Dist: uiautomator2 (>=2)
+Requires-Dist: uvicorn[standard]
+Requires-Dist: wdapy (>=0.2.2,<0.3.0)
+Description-Content-Type: text/markdown
+
+# uiautodev
+[![codecov](https://codecov.io/gh/codeskyblue/appinspector/graph/badge.svg?token=aLTg4VOyQH)](https://codecov.io/gh/codeskyblue/appinspector)
+[![PyPI version](https://badge.fury.io/py/uiautodev.svg)](https://badge.fury.io/py/uiautodev)
+
+https://uiauto.dev
+
+> backup site: https://uiauto.devsleep.com
+
+UI Inspector for Android and iOS, help inspector element properties, and auto generate XPath, script.
+
+# Install
+```bash
+pip install uiautodev
+```
+
+# Usage
+```bash
+Usage: uiauto.dev [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  -v, --verbose  verbose mode
+  -h, --help     Show this message and exit.
+
+Commands:
+  android      COMMAND: tap, tapElement, installApp, currentApp,...
+  appium       COMMAND: tap, tapElement, installApp, currentApp,...
+  ios          COMMAND: tap, tapElement, installApp, currentApp,...
+  self-update  Update uiautodev to latest version
+  server       start uiauto.dev local server [Default]
+  version      Print version
+```
+
+```bash
+# run local server and open browser
+uiauto.dev
+```
+
+# DEVELOP
+```bash
+# install poetry (python package manager)
+pip install poetry # pipx install poetry
+
+# install deps
+poetry install
+
+# format import
+make format
+
+# run server
+make dev
+```
+
+# LICENSE
+[MIT](LICENSE)
