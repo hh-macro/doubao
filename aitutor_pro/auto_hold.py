@@ -1,7 +1,50 @@
 import time
 import subprocess
 from pathlib import Path
+
+from datetime import date
 import uiautomator2 as u2
+import shutil
+
+
+def time_date():
+    #  获取今天的 年-月-日
+    today = date.today()
+    year = today.year
+    month = today.month
+    day = today.day
+    return f'{year}-{month}-{day}'
+
+
+# 将一个文件复制到另一个文件或目录
+def copy_file(source_name):
+    """ 将一个文件复制到另一个文件或目录。"""
+    # 源文件路径
+    source_folder = Path(r"D:/atimu")
+    source = source_folder / source_name  # 源文件的完整路径
+
+    # 目标文件路径
+    target_folder = Path(rf"D:/aresult/{time_date()}/timu")
+    target = target_folder / source_name  # 目标文件的完整路径
+
+    try:
+        shutil.copy(source, target)
+    except Exception as e:
+        print(f"复制文件时发生错误：{e}")
+
+
+def image_cache_w(image_name):
+    # 写入缓存文件
+    with open("image_cache", "w") as cache_file:
+        cache_file.write(image_name)
+    print(image_name + ' --加入缓存成功!')
+
+
+def image_cache_r():
+    # 从缓存文件读取图片名
+    with open("image_cache", "r") as cache_file:
+        cached_image_name = cache_file.read()
+    return cached_image_name
 
 
 def clear_directory(target_folder):
@@ -26,7 +69,6 @@ def push_directory(destination_folder_on_pc, target_folder):
         print(result_1.stdout)
 
 
-
 d = u2.connect('4310d42b')
 d.implicitly_wait(3)
 
@@ -37,16 +79,27 @@ path = Path(directory_file)
 # 遍历目录及其所有子目录
 for item in path.rglob("*"):  # rglob("*") 递归所有
     if item.is_file():  # 只处理文件
-        print(f"图片:\t{item} 正在处理...")
 
+        print(f"图片:\t{item} 正在处理...")
+        file_name = item.name  # 获取文件名
+        copy_file(file_name)  # 复制图片
         d(text='拍题答疑').click_exists()
         d(text='再拍一页').click_exists(timeout=5)
         push_directory(item, target_folder)  # 传入图片
+
+        # print(item.stem)  # 文件名无后缀
+        image_cache_w(item.stem)  # 写入缓存
+
         time.sleep(2)
         d(resourceId='com.aitutor.hippo:id/mj').click_exists()
         d(resourceId='com.aitutor.hippo:id/1g')[0].click()
         clear_directory(target_folder)  # 清空手机目录
-        time.sleep(4)
+        time.sleep(12)
+
+        for io in range(30):
+            time.sleep(0.2)
+            d(resourceId='com.aitutor.hippo:id/aog', text=f'{io}').click_exists()
+
         con_page = d(text='再拍一页').click_exists(timeout=5)
         if not con_page:
             for i in range(7):

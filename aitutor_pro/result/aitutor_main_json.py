@@ -8,7 +8,7 @@ from protobuf_to import GetByUserInit
 # 对base64_strings.json 文件里面的base64编码进行去重操作
 def the_frist():
     """ 对base64_strings.json 文件里面的base64编码进行去重操作 """
-    file_path = 'base64_strings.json'
+    file_path = '../base64_strings.json'
 
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -27,7 +27,7 @@ def the_frist():
 # 读取 base64_strings.json 中的内容、遍历、筛选出字符超过10000的、调用 unpack() 方法
 def circulat():
     """  读取 base64_strings.json 中的内容、遍历、筛选出字符超过10000的、调用 unpack() 方法"""
-    file_path = "base64_strings.json"
+    file_path = "../base64_strings.json"
 
     try:
         with open(file_path, "r", encoding="utf-8") as file:
@@ -233,11 +233,11 @@ CMgBELHeBxgAIgJPSygAMsEYwgy9GAqnAwoTNzQ2MDQ0Njg5ODYyMTU5NTk1NhACGKOQmIDfpbXEZyAA
     # unpack(base64_str)  # 单个测试
     the_frist()  # 对base64_strings.json 文件里面的base64编码进行去重操作
     circulat()
-    dir_path = "/result"
+    dir_path = ""
     path_a = Path(dir_path)
 
     file_count = sum(1 for entry in path_a.iterdir() if entry.is_file())
 
     de_weigh_json(item=0)  # 对data_list.json'中的内容进行去重操作, item为
 
-    clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
+    clear_json_file(file_path="../base64_strings.json")  # 删除并重新创建 base64_strings.json
