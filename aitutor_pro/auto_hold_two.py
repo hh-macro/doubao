@@ -123,10 +123,11 @@ for item in path.rglob("*"):  # rglob("*") 递归所有
         clear_directory(target_folder)  # 清空手机目录
         time.sleep(15)
 
-        for io in range(1, 30):
-            time.sleep(0.3)
+        for io in range(1, 50):
+            time.sleep(2)
             aog_page = d(resourceId='com.aitutor.hippo:id/aog', text=f'{io}').click_exists()
             if not aog_page:
+                print(f'拍搜结果一共{io - 1}道题目')
                 break
         con_page = d(text='再拍一页').click_exists(timeout=5)
         if not con_page:
@@ -134,11 +135,10 @@ for item in path.rglob("*"):  # rglob("*") 递归所有
                 print(i)
                 d(text='重试').click_exists(timeout=3)
                 time.sleep(1)
-
-            for io in range(1, 30):
-                time.sleep(0.3)
+            for io in range(1, 50):
+                time.sleep(2)
                 aog_page = d(resourceId='com.aitutor.hippo:id/aog', text=f'{io}').click_exists()
                 if not aog_page:
+                    print(f'拍搜结果一共{io - 1}道题目')
                     break
-
             d(text='再拍一页').click_exists(timeout=5)

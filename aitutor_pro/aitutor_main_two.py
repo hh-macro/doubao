@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from datetime import datetime
 import requests
-from protobuf_to import GetByUserInit
+from protobuf_to import GetByUserInitTwo
 import pymongo
 from bson.json_util import dumps
 
@@ -47,7 +47,7 @@ def re_mango():
     for document in data_list.find():
         try:
             # rich_text = document['qa_biz_params']['qa_item_result']  # 确保提取字段内容
-            rich_text = document.get('qa_biz_params', {}).get('qa_item_result')  # 确保提取字段内容
+            rich_text = document.get('content', {})  # 确保提取字段内容
             if not rich_text:
                 continue
             rich_text_str = json.dumps(rich_text, ensure_ascii=False)
@@ -78,7 +78,7 @@ def re_mango():
                 data_list.update_one(
                     {"_id": document["_id"]},
                     {"$set": {
-                        "qa_biz_params.qa_item_result": updated_rich_text
+                        "content": updated_rich_text
                     }}
                 )
                 print("文档对图片地址----已更新")
@@ -175,8 +175,8 @@ def circulate():
     # 遍历列表中的每个字典
     for i, item in enumerate(base64_list, start=1):
         for key_cache, base64_str in item.items():  # 提取字典中的键和值
-            if len(base64_str) > 5000:
-                print(f"第 {i} 个条目(键: {key_cache})的 base64 字符串长度超过 5000，正在处理...")
+            if len(base64_str) > 3000:
+                print(f"第 {i} 个条目(键: {key_cache})的 base64 字符串长度超过 3000，正在处理...")
                 unpack(base64_str, key_cache)  # 调用 unpack 方法处理
                 print("---------------------------------------------------")
 
@@ -192,87 +192,10 @@ def clear_json_file(file_path):
 # 对data_list'表中的内容进行去重操作
 def de_weigh_json():
     # 定义聚合管道
-    # pipeline = [
-    #     {
-    #         "$addFields": {
-    #             # 判断字段是否存在，并清理嵌套字段中的 HTML 标签
-    #             "clean_text": {
-    #                 "$trim": {
-    #                     "input": {
-    #                         "$replaceAll": {
-    #                             # 如果 ocr_text 存在，使用 ocr_text，否则使用 analysis
-    #                             "input": {
-    #                                 "$ifNull": [
-    #                                     "$qa_biz_params.qa_item_result.ocr_text",
-    #                                     "$qa_biz_params.qa_item_result.analysis"
-    #                                 ]
-    #                             },
-    #                             "find": "<.*?>",  # 匹配 HTML 标签
-    #                             "replacement": ""
-    #                         }
-    #                     }
-    #                 }
-    #             }
-    #         }
-    #     },
-    #     {
-    #         "$group": {
-    #             "_id": "$clean_text",  # 按清理后的内容分组
-    #             "firstDocument": {"$first": "$$ROOT"}  # 保留每组的第一条文档
-    #         }
-    #     },
-    #     {
-    #         "$replaceRoot": {"newRoot": "$firstDocument"}  # 恢复文档的原始结构
-    #     }
-    # ]
-
-    # 执行聚合管道获取去重后的文档
     pipeline = [
         {
-            "$addFields": {
-                # 处理格式一：清理 ocr_text 和 analysis 字段
-                "clean_text_format1": {
-                    "$trim": {
-                        "input": {
-                            "$replaceAll": {
-                                "input": {
-                                    "$ifNull": [
-                                        "$qa_biz_params.qa_item_result.ocr_text",
-                                        "$qa_biz_params.qa_item_result.analysis",
-                                        "$qa_biz_params.qa_item_result.rich_text",
-                                    ]
-                                },
-                                "find": "<.*?>",  # 匹配 HTML 标签
-                                "replacement": ""
-                            }
-                        }
-                    }
-                },
-                # 处理格式二：清理 a:prompt_replace 字段
-                "clean_text_format2": {
-                    "$trim": {
-                        "input": {
-                            "$replaceAll": {
-                                "input": {
-                                    "$ifNull": [
-                                        "$a:prompt_replace",
-                                        "$a:qa_search_result_id",
-                                    ]
-                                },
-                                "find": "<.*?>",  # 匹配 HTML 标签
-                                "replacement": ""
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        {
             "$group": {
-                "_id": {
-                    "clean_text_format1": "$clean_text_format1",  # 按格式一的内容分组
-                    "clean_text_format2": "$clean_text_format2"  # 按格式二的内容分组
-                },
+                "_id": "$content",  # 按 content 字段分组
                 "firstDocument": {"$first": "$$ROOT"}  # 保留每组的第一条文档
             }
         },
@@ -280,6 +203,8 @@ def de_weigh_json():
             "$replaceRoot": {"newRoot": "$firstDocument"}  # 恢复文档的原始结构
         }
     ]
+
+    # 执行聚合管道获取去重后的文档
     unique_documents = list(collection.aggregate(pipeline))
 
     # 提取唯一文档的 _id 列表
@@ -309,19 +234,19 @@ def contains_chinese(s):
 # 将 unpack() 方法筛选成功的list追加存入 data_list.json 文件中"
 def json_save_base64(filtered_list, key_cache):
     """ 将 unpack() 方法筛选成功的list存入 data_list表中"""
-    jso1_list = [json.loads(saw2) for saw2 in filtered_list]
-    # print('12123', len(jso1_list), jso1_list)
+
     # 向每个字典中添加一个新的键值对
-    for item in jso1_list:
-        item["image_name"] = key_cache
+    filtered_list["image_name"] = key_cache
 
     try:
-        result_dict = data_list.insert_many(jso1_list)
+        # 插入到 MongoDB 集合中
+        result = data_list.insert_one(filtered_list)
+        print(f"已成功向 data_list 表中插入 1 条数据。插入的 ID: {result.inserted_id}")
     except TypeError as e:
-        print_red(jso1_list)
+        print_red(filtered_list)
         print(f"数据转换或插入 MongoDB 表时发生了 Type Error: {e}")
         return
-    print(f"已成功向 data_list 表中插入 {len(result_dict.inserted_ids)} 条数据。")
+    # print(f"已成功向 data_list 表中插入数据。")
 
 
 # 将mango表中数据转json
@@ -341,11 +266,10 @@ def mango_json():
 # 核心方法unpack() 对读取的 base64码  进行转换识别操作，再通过层层筛选，得到所需josn结果
 def unpack(base64_str, key_cache):
     """ 核心方法 对读取的 base64码  进行转换识别操作，再通过层层筛选，得到所需josn结果 """
-    dict_result = GetByUserInit().parse(base64.b64decode(base64_str)).to_json(indent=2)
-
+    dict_result = GetByUserInitTwo().parse(base64.b64decode(base64_str)).to_json(indent=2)
+    # print('dict_result:', dict_result)
     filtered_messages = []  # 存放 dict_result 包含中文的字段
     json_data = json.loads(dict_result)
-
     for inner_message in json_data.get("innerList", []):
         nested = inner_message.get("nested", {})
         deep_nested = nested.get("deepNested", [])
@@ -365,67 +289,60 @@ def unpack(base64_str, key_cache):
                 dn_message["promptContent"] = filtered_prompt_content
                 filtered_messages.append(dn_message)
 
-    # 去掉每个字典中的 cardStem 字段
-    for msg in filtered_messages:
-        msg.pop("cardStem", None)
+    filtered_messages_new = filtered_messages[0]['cardStem']
 
-    print(len(filtered_messages), end=" ")
-    print(filtered_messages)
+    # print(len(filtered_messages_new), end=" ")
+    # print(filtered_messages_new)
 
-    # promptContent字符为空的先去掉，再如果promptContent下面有多个conText，进行对比，保留字符最多的conText (下面)
-    processed_messages = []
-    # 遍历 filtered_messages 列表
-    for msg in filtered_messages:
-        # 去掉 cardStem 字段
-        msg.pop("cardStem", None)
-
-        # 获取 promptContent 字段
-        prompt_content = msg.get("promptContent", [])
-
-        # 去掉 promptContent 为空的项
-        if not prompt_content:
-            continue
-
-        # 如果 promptContent 下面有多个 conText，保留字符最多的 conText
-        max_length = -1
-        longest_con_text_item = None
-
-        for item in prompt_content:
-            con_text = item.get("conText", "")
-            if len(con_text) > max_length:
-                max_length = len(con_text)
-                longest_con_text_item = item
-
-        # 保留字符最多的 conText
-        msg["promptContent"] = [longest_con_text_item] if longest_con_text_item else []
-
-        # 添加处理后的消息到 processed_messages 列表
-        processed_messages.append(msg)
-
-    print(len(processed_messages), end=" ")
-    print(processed_messages)
-
-    # 提取所有 conText 到一个单独的列表
-    con_texts = [item["conText"] for msg in processed_messages for item in msg["promptContent"]]
-    # print(len(con_texts), end=" ")
-    # print(con_texts)
-
-    # 去重
-    unique_data = list(set(con_texts))
+    # # promptContent字符为空的先去掉，再如果promptContent下面有多个conText，进行对比，保留字符最多的conText (下面)
+    # processed_messages = []
+    # # 遍历 filtered_messages 列表
+    # for msg in filtered_messages:
+    #     # 去掉 cardStem 字段
+    #     msg.pop("cardStem", None)
+    #
+    #     # 获取 promptContent 字段
+    #     prompt_content = msg.get("promptContent", [])
+    #
+    #     # 去掉 promptContent 为空的项
+    #     if not prompt_content:
+    #         continue
+    #
+    #     # 如果 promptContent 下面有多个 conText，保留字符最多的 conText
+    #     max_length = -1
+    #     longest_con_text_item = None
+    #
+    #     for item in prompt_content:
+    #         con_text = item.get("conText", "")
+    #         if len(con_text) > max_length:
+    #             max_length = len(con_text)
+    #             longest_con_text_item = item
+    #
+    #     # 保留字符最多的 conText
+    #     msg["promptContent"] = [longest_con_text_item] if longest_con_text_item else []
+    #
+    #     # 添加处理后的消息到 processed_messages 列表
+    #     processed_messages.append(msg)
+    #
+    # print(len(processed_messages), end=" ")
+    # print(processed_messages)
+    #
+    # # 提取所有 conText 到一个单独的列表
+    # con_texts = [item["conText"] for msg in processed_messages for item in msg["promptContent"]]
+    # # print(len(con_texts), end=" ")
+    # # print(con_texts)
+    #
+    # # 去重
+    # unique_data = list(set(con_texts))
     # 输出结果
     # print(len(unique_data), end=" ")
     # print(unique_data)
 
     # print(json.dumps(unique_data, indent=4, ensure_ascii=False))
 
-    filtered_list = []
-    for item in unique_data:
-        try:
-            data = json.loads(item)
-            if 'a:prompt_replace' not in data or len(data['a:prompt_replace']) > 10:
-                filtered_list.append(item)
-        except json.JSONDecodeError:
-            continue
+    data = json.loads(filtered_messages_new)
+    filtered_list = data
+
     print(len(filtered_list), end=" ")
     print(filtered_list)
 
@@ -446,7 +363,7 @@ CMgBELHeBxgAIgJPSygAMsEYwgy9GAqnAwoTNzQ2MDQ0Njg5ODYyMTU5NTk1NhACGKOQmIDfpbXEZyAA
 
     de_weigh_json()  # 对 data_list 表中的内容进行去重操作
 
-    # clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
+    clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
 
     re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址
 
