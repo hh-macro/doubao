@@ -3,7 +3,7 @@ import json
 import time
 from datetime import datetime
 from mitmproxy.tools.main import mitmdump
-import requests
+import subprocess  # 导入 subprocess 模块用于启动和关闭 mitmdump
 from mitmproxy import http
 
 # 用于存储所有 base64 编码的字符串
@@ -28,7 +28,7 @@ def response(flow: http.HTTPFlow) -> None:
         # time.sleep(5)  # 等待 5 秒
         # response = requests.get(flow.request.url, timeout=10)
         # flow_res = response.content
-        time.sleep(10)
+        time.sleep(15)
         flow_res = flow.response.content
         base64_str = base64.b64encode(flow_res).decode('utf-8')
         # print(base64_str)
@@ -50,9 +50,20 @@ def save_base64_strings_to_file(file_path):
     print(f"{now_time}:\t 文件覆盖保存成功！ ----  {file_path}")
 
 
-def mit_main():
+# 新增函数：启动 mitmdump
+def start_mitmdump():
     # 启动 mitmdump 并加载当前脚本
-    mitmdump(["-q", "-s", __file__])
+    mitmdump_cmd = ["mitmdump", "-q", "-s", __file__]
+    mitmdump_process = subprocess.Popen(mitmdump_cmd)
+    print("mitmdump 已启动\t PID:", mitmdump_process.pid)
+    return mitmdump_process
+
+
+# 新增函数：关闭 mitmdump
+def stop_mitmdump(process):
+    process.terminate()  # 发送终止信号
+    process.wait()  # 等待进程结束
+    print("mitmdump 已关闭")
 
 
 """
@@ -60,5 +71,8 @@ mitmdump -q -s intercept.py  ----启动截包
 """
 
 if __name__ == '__main__':
-    # open("image_cache", "w").close()
-    mit_main()
+    open("image_cache", "w").close()  # 清空缓存文件
+    mitmdump_process = start_mitmdump()  # 启动 mitmdump
+
+    time.sleep(60)
+    stop_mitmdump(mitmdump_process)  # 关闭 mitmdump

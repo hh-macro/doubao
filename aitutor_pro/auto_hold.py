@@ -72,8 +72,8 @@ def push_directory(destination_folder_on_pc, target_folder):
                        f"file://{target_folder}"]
     if result_1.returncode == 0:
         subprocess.run(refresh_command, capture_output=True, text=True, encoding="utf-8")
-        print("文件推送成功！")
-        print(result_1.stdout)
+        print("文件推送成功!")
+        # print(result_1.stdout)
 
 
 def create_parent_and_children():
@@ -93,52 +93,63 @@ def create_parent_and_children():
             print(f"已创建子文件夹：{parent_folder}/{child}")
 
 
-d = u2.connect('4310d42b')
-d.implicitly_wait(3)
+def hold_folder():
+    d = u2.connect('4310d42b')
+    d.implicitly_wait(3)
 
-target_folder = "/sdcard/DCIM/Camera"
-directory_file = r"D:/atimu"
+    target_folder = "/sdcard/DCIM/Camera"
+    directory_file = r"D:/atimu"
 
-create_parent_and_children()  # 创建文件夹
-clear_directory(target_folder)  # 第一次清空手机目录
+    create_parent_and_children()  # 创建文件夹
+    clear_directory(target_folder)  # 第一次清空手机目录
 
-path = Path(directory_file)
-# 遍历目录及其所有子目录
-for item in path.rglob("*"):  # rglob("*") 递归所有
-    if item.is_file():  # 只处理文件
+    path = Path(directory_file)
+    # 遍历目录及其所有子目录
+    for item in path.rglob("*"):  # rglob("*") 递归所有
+        if item.is_file():  # 只处理文件
 
-        print(f"图片:\t{item} 正在处理...")
-        file_name = item.name  # 获取文件名
-        copy_file(file_name)  # 复制图片
-        d(text='拍题答疑').click_exists()
-        d(text='再拍一页').click_exists(timeout=5)
-        push_directory(item, target_folder)  # 传入图片
+            print(f"图片:\t{item} 正在处理...")
+            print('')
+            file_name = item.name  # 获取文件名
+            copy_file(file_name)  # 复制图片
+            d(text='拍题答疑').click_exists()
+            d(text='再拍一页').click_exists(timeout=5)
+            push_directory(item, target_folder)  # 传入图片
 
-        # print(item.stem)  # 文件名无后缀
-        image_cache_w(item.stem)  # 写入缓存
+            # print(item.stem)  # 文件名无后缀
+            image_cache_w(item.stem)  # 写入缓存
 
-        time.sleep(2)
-        d(resourceId='com.aitutor.hippo:id/mj').click_exists()
-        d(resourceId='com.aitutor.hippo:id/1g')[0].click()
-        clear_directory(target_folder)  # 清空手机目录
-        time.sleep(15)
-
-        for io in range(1, 30):
-            time.sleep(0.3)
-            aog_page = d(resourceId='com.aitutor.hippo:id/aog', text=f'{io}').click_exists()
-            if not aog_page:
-                break
-        con_page = d(text='再拍一页').click_exists(timeout=5)
-        if not con_page:
-            for i in range(7):
-                print(i)
-                d(text='重试').click_exists(timeout=3)
-                time.sleep(1)
-
+            time.sleep(2)
+            d(resourceId='com.aitutor.hippo:id/mj').click_exists()
+            d(resourceId='com.aitutor.hippo:id/1g')[0].click()
+            clear_directory(target_folder)  # 清空手机目录
+            time.sleep(18)
+            if not d(resourceId='com.aitutor.hippo:id/aog', text='1').exists(timeout=120):
+                print_red(f"网络请求异常\t---- {item.stem}\t 题目无法加载! 进行跳过")
+                continue
+            time.sleep(1)
             for io in range(1, 30):
                 time.sleep(0.3)
                 aog_page = d(resourceId='com.aitutor.hippo:id/aog', text=f'{io}').click_exists()
                 if not aog_page:
+                    time.sleep(3)
+                    print(f'页面题目结果一共{io - 1}道题目')
                     break
+            con_page = d(text='再拍一页').click_exists(timeout=5)
+            if not con_page:
+                for i in range(7):
+                    print(i)
+                    d(text='重试').click_exists(timeout=3)
+                    time.sleep(1)
 
-            d(text='再拍一页').click_exists(timeout=5)
+                for io in range(1, 30):
+                    time.sleep(0.3)
+                    aog_page = d(resourceId='com.aitutor.hippo:id/aog', text=f'{io}').click_exists()
+                    if not aog_page:
+                        break
+
+                d(text='再拍一页').click_exists(timeout=5)
+
+
+if __name__ == '__main__':
+    hold_folder()

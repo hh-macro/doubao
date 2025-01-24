@@ -47,8 +47,7 @@ def re_mango():
     for document in data_list.find():
         try:
             # rich_text = document['qa_biz_params']['qa_item_result']  # 确保提取字段内容
-            rich_text = document.get('stem')  # 确保提取字段内容
-            # print('rich_text:\t', rich_text)
+            rich_text = document.get('qa_biz_params', {}).get('qa_item_result')  # 确保提取字段内容
             if not rich_text:
                 continue
             rich_text_str = json.dumps(rich_text, ensure_ascii=False)
@@ -79,7 +78,7 @@ def re_mango():
                 data_list.update_one(
                     {"_id": document["_id"]},
                     {"$set": {
-                        "stem": updated_rich_text
+                        "qa_biz_params.qa_item_result": updated_rich_text
                     }}
                 )
                 print("文档对图片地址----已更新")
@@ -230,9 +229,49 @@ def de_weigh_json():
     # 执行聚合管道获取去重后的文档
     pipeline = [
         {
+            "$addFields": {
+                # 处理格式一：清理 ocr_text 和 analysis 字段
+                "clean_text_format1": {
+                    "$trim": {
+                        "input": {
+                            "$replaceAll": {
+                                "input": {
+                                    "$ifNull": [
+                                        "$qa_biz_params.qa_item_result.ocr_text",
+                                        "$qa_biz_params.qa_item_result.analysis",
+                                        "$qa_biz_params.qa_item_result.rich_text",
+                                    ]
+                                },
+                                "find": "<.*?>",  # 匹配 HTML 标签
+                                "replacement": ""
+                            }
+                        }
+                    }
+                },
+                # 处理格式二：清理 a:prompt_replace 字段
+                "clean_text_format2": {
+                    "$trim": {
+                        "input": {
+                            "$replaceAll": {
+                                "input": {
+                                    "$ifNull": [
+                                        "$a:prompt_replace",
+                                        "$a:qa_search_result_id",
+                                    ]
+                                },
+                                "find": "<.*?>",  # 匹配 HTML 标签
+                                "replacement": ""
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
             "$group": {
                 "_id": {
-                    "$ifNull": ["$analysis", "stem"]  # 如果 content 不存在，使用 another_field
+                    "clean_text_format1": "$clean_text_format1",  # 按格式一的内容分组
+                    "clean_text_format2": "$clean_text_format2"  # 按格式二的内容分组
                 },
                 "firstDocument": {"$first": "$$ROOT"}  # 保留每组的第一条文档
             }
@@ -280,7 +319,7 @@ def json_save_base64(filtered_list, key_cache):
         result_dict = data_list.insert_many(jso1_list)
     except TypeError as e:
         print_red(jso1_list)
-        print_red(f"数据转换或插入 MongoDB 表时发生了 Type Error: {e}")
+        print(f"数据转换或插入 MongoDB 表时发生了 Type Error: {e}")
         return
     print(f"已成功向 data_list 表中插入 {len(result_dict.inserted_ids)} 条数据。")
 
@@ -326,108 +365,67 @@ def unpack(base64_str, key_cache):
                 dn_message["promptContent"] = filtered_prompt_content
                 filtered_messages.append(dn_message)
 
+    # 去掉每个字典中的 cardStem 字段
+    for msg in filtered_messages:
+        msg.pop("cardStem", None)
+
     print(len(filtered_messages), end=" ")
     print(filtered_messages)
-    # # 去掉每个字典中的 cardStem 字段
-    # for msg in filtered_messages:
-    #     msg.pop("cardStem", None)
-    #
-    # print(len(filtered_messages), end=" ")
-    # print(filtered_messages)
 
-    # # promptContent字符为空的先去掉，再如果promptContent下面有多个conText，进行对比，保留字符最多的conText (下面)
-    # processed_messages = []
-    # # 遍历 filtered_messages 列表
-    # for msg in filtered_messages:
-    #     # 去掉 cardStem 字段
-    #     msg.pop("cardStem", None)
-    #
-    #     # 获取 promptContent 字段
-    #     prompt_content = msg.get("promptContent", [])
-    #
-    #     # 去掉 promptContent 为空的项
-    #     if not prompt_content:
-    #         continue
-    #
-    #     # 如果 promptContent 下面有多个 conText，保留字符最多的 conText
-    #     max_length = -1
-    #     longest_con_text_item = None
-    #
-    #     for item in prompt_content:
-    #         con_text = item.get("conText", "")
-    #         if len(con_text) > max_length:
-    #             max_length = len(con_text)
-    #             longest_con_text_item = item
-    #
-    #     # 保留字符最多的 conText
-    #     msg["promptContent"] = [longest_con_text_item] if longest_con_text_item else []
-    #
-    #     # 添加处理后的消息到 processed_messages 列表
-    #     processed_messages.append(msg)
-    #
-    # print(len(processed_messages), end=" ")
-    # print(processed_messages)
+    # promptContent字符为空的先去掉，再如果promptContent下面有多个conText，进行对比，保留字符最多的conText (下面)
+    processed_messages = []
+    # 遍历 filtered_messages 列表
+    for msg in filtered_messages:
+        # 去掉 cardStem 字段
+        msg.pop("cardStem", None)
+
+        # 获取 promptContent 字段
+        prompt_content = msg.get("promptContent", [])
+
+        # 去掉 promptContent 为空的项
+        if not prompt_content:
+            continue
+
+        # 如果 promptContent 下面有多个 conText，保留字符最多的 conText
+        max_length = -1
+        longest_con_text_item = None
+
+        for item in prompt_content:
+            con_text = item.get("conText", "")
+            if len(con_text) > max_length:
+                max_length = len(con_text)
+                longest_con_text_item = item
+
+        # 保留字符最多的 conText
+        msg["promptContent"] = [longest_con_text_item] if longest_con_text_item else []
+
+        # 添加处理后的消息到 processed_messages 列表
+        processed_messages.append(msg)
+
+    print(len(processed_messages), end=" ")
+    print(processed_messages)
 
     # 提取所有 conText 到一个单独的列表
-    # con_texts = [item["conText"] for msg in processed_messages for item in msg["promptContent"]]
+    con_texts = [item["conText"] for msg in processed_messages for item in msg["promptContent"]]
     # print(len(con_texts), end=" ")
     # print(con_texts)
 
     # 去重
-    # unique_data = list(set(con_texts))
+    unique_data = list(set(con_texts))
     # 输出结果
     # print(len(unique_data), end=" ")
     # print(unique_data)
 
     # print(json.dumps(unique_data, indent=4, ensure_ascii=False))
 
-    # 处理数据：只保留 cardStem，去除 promptContent
-    processed_data = [{"cardStem": item["cardStem"]} for item in filtered_messages]
-    # processed_messages = json.dumps(processed_data, indent=4, ensure_ascii=False)
-    # print(len(processed_data), end=" ")
-    # print(processed_data)
-
-    # 提取 cardStem 数据并封装成列表
-    con_texts = [item["cardStem"] for item in processed_data if "cardStem" in item]
-    # print(len(con_texts), end=" ")
-    # print(con_texts)
-
-    filtered_data = []
-    for iteam in con_texts:
-        try:
-            # 解析 JSON 字符串
-            parsed_item = json.loads(iteam)
-            content = parsed_item.get("content", "")
-
-            # 统计中文字符数量
-            chinese_count = len(re.findall(r'[\u4e00-\u9fff]', content))
-
-            # 如果中文字符数量小于 5，则保留
-            if chinese_count > 5:
-                filtered_data.append(parsed_item)
-        except json.JSONDecodeError as e:
-            print_red(f"解析 JSON 时发生错误: {e}")
-
-    print(len(filtered_data), end=" ")
-    print(filtered_data)
-
     filtered_list = []
-    for ie1 in filtered_data:
+    for item in unique_data:
         try:
-            # 解析 JSON 字符串
-            # parsed_item = json.loads(ie1)
-            content_ie1 = ie1.get("content", "")
-
-            # 检查 avatar_text 是否为 "有问题？向豆包提问"
-            if "avatar_text" in content_ie1:
-                content_dict = json.loads(content_ie1)
-                if content_dict.get("avatar_text") == "有问题？向豆包提问":
-                    continue  # 跳过该条目
-
-            # 如果不满足条件，则保留该条目
-            filtered_list.append(content_ie1)
-        except json.JSONDecodeError as e:
-            print_red(f"解析 JSON 时发生错误: {e}")
+            data = json.loads(item)
+            if 'a:prompt_replace' not in data or len(data['a:prompt_replace']) > 10:
+                filtered_list.append(item)
+        except json.JSONDecodeError:
+            continue
     print(len(filtered_list), end=" ")
     print(filtered_list)
 
@@ -435,6 +433,9 @@ def unpack(base64_str, key_cache):
 
 
 if __name__ == '__main__':
+    base64_str = """
+CMgBELHeBxgAIgJPSygAMsEYwgy9GAqnAwoTNzQ2MDQ0Njg5ODYyMTU5NTk1NhACGKOQmIDfpbXEZyAAKLSChdDVnbXEZzDRhgM4o72gvYTN0wVCgQF7ImNvbW1hbmRfdHlwZSI6NCwiY29udmVyc2F0aW9uX2lkIjoiNzQ2MDQ0Njg5ODYyMTU5NTk1NiIsImNvbnZlcnNhdGlvbl90eXBlIjoyLCJjb252ZXJzYXRpb25fdmVyc2lvbiI6MTczNzAyMDcyMSwiaW5ib3hfdHlwZSI6MH1KOwoTczpjbGllbnRfbWVzc2FnZV9pZBIkNzUyZWFlZTUtZGY1My00ZWViLWE2YzUtNWI3NTUyYjU5MDM0Si0KHHM6c2VydmVyX21lc3NhZ2VfY3JlYXRlX3RpbWUSDTE3MzcwMjA3MjE0NDVKHQoJczp2aXNpYmxlEhAzMTgyNDM0NTI5NTgyNzU1UKSSg/TGMlgAYABoAHJMTVM0d0xqQUJBQUFBc0tJc2RaVEcxRGk1NXFKZE9mekw0WEJZUnZYNmp1WjhFN3RpY2psSGpwQjhTZ0ZVbnJxZWhJbTg4el9qRWZtQYgBAAqFFQoTNzQ2MDQ0Njg5ODYyMTU5NTk1NhACGI+QoLDcpbXEZyAAKLSChdDVnbXEZzDShgM4h/EeQqgKeyJjYXJkX3R5cGUiOjIwLCJjb250ZW50Ijoie1wiYXZhdGFyX3RleHRcIjpcIuaciemXrumimO+8n+WQkeixhuWMheaPkOmXrlwiLFwiYXZhdGFyX2ltYWdlXCI6e1widXJpXCI6XCJcIixcInVybFwiOlwiaHR0cHM6Ly9wMy1oaXBwby11c2VyLmJ5dGVpbWcuY29tL3Rvcy1jbi1pLWo0ZnIxdDY3bDYvYXZhdG9yX2ZpeC5wbmd+dHBsdi1qNGZyMXQ2N2w2LWltYWdlLmltYWdlXCJ9fSIsInRyYW5zZmVyX3R5cGUiOjIsIm1vdW50X3VuaXQiOlt7Im1vdW50X3R5cGUiOjEsIm9wdCI6eyJvcHRfaWQiOjAsIm9wdF90eXBlIjoxLCJvcHRfY29udCI6IuWIhuW8j+S4jeetieW8j+acieS7gOS5iOeJueeCuSIsImFmdGVyX2NsaWNrX3R5cGUiOjIsImhhc19jaG9vc2VuIjpmYWxzZSwiYXNzb2NpYXRlZF9pdGVtIjp7ImFzc29jaWF0ZWRfaXRlbV90eXBlIjozLCJhc3NvY2lhdGVkX2l0ZW1faWQiOjAsImFzc29jaWF0ZWRfaXRlbV9pbmZvIjoie1wiZmFxX2lkXCI6MCxcInF1ZXN0aW9uX3R5cGVcIjowLFwiZmFxX3NvdXJjZVwiOjgsXCJpc19maXJzdFwiOnRydWV9In0sImludGVuZCI6MywiY2FuX3Nob3dfaW5fcGxhY2Vob2xkZXIiOnRydWV9fSx7Im1vdW50X3R5cGUiOjEsIm9wdCI6eyJvcHRfaWQiOjEsIm9wdF90eXBlIjoxLCJvcHRfY29udCI6IuWmguS9leWIpOaWreWIhuWtkOWIhuavjeeahOato+i0n+aApyIsImFmdGVyX2NsaWNrX3R5cGUiOjIsImhhc19jaG9vc2VuIjpmYWxzZSwiYXNzb2NpYXRlZF9pdGVtIjp7ImFzc29jaWF0ZWRfaXRlbV90eXBlIjozLCJhc3NvY2lhdGVkX2l0ZW1faWQiOjAsImFzc29jaWF0ZWRfaXRlbV9pbmZvIjoie1wiZmFxX2lkXCI6MCxcInF1ZXN0aW9uX3R5cGVcIjowLFwiZmFxX3NvdXJjZVwiOjgsXCJpc19maXJzdFwiOnRydWV9In0sImludGVuZCI6MywiY2FuX3Nob3dfaW5fcGxhY2Vob2xkZXIiOnRydWV9fSx7Im1vdW50X3R5cGUiOjEsIm9wdCI6eyJvcHRfaWQiOjIsIm9wdF90eXBlIjoxLCJvcHRfY29udCI6IuS4uuS7gOS5iOW9k1xcKHgrMVx1MDAzYzBcXCnkuJRcXCh4IC0gMVx1MDAzZTBcXCnml7bml6Dop6MiLCJhZnRlcl9jbGlja190eXBlIjoyLCJoYXNfY2hvb3NlbiI6ZmFsc2UsImFzc29jaWF0ZWRfaXRlbSI6eyJhc3NvY2lhdGVkX2l0ZW1fdHlwZSI6MywiYXNzb2NpYXRlZF9pdGVtX2lkIjowLCJhc3NvY2lhdGVkX2l0ZW1faW5mbyI6IntcImZhcV9pZFwiOjAsXCJxdWVzdGlvbl90eXBlXCI6MCxcImZhcV9zb3VyY2VcIjo4LFwiaXNfZmlyc3RcIjp0cnVlfSJ9LCJpbnRlbmQiOjMsImNhbl9zaG93X2luX3BsYWNlaG9sZGVyIjpmYWxzZX19XSwic3RyZWFtX2tleSI6IiJ9ShEKDHM6ZWRpdF9jb3VudBIBMUqtAwoLYTpiaXpfcGFyYW0SnQN7ImJpel9hcHBfaWQiOjUyMDk0NywiYml6X3NjZW5lcyI6NSwicWFfYml6X3BhcmFtcyI6eyJzZWFyY2hfaWQiOjE4MjEzOTgxNjY0OTIyMDgsInJlc19pZCI6MTgyMTM5ODE3MzcxMTQwOCwiaXRlbV9pZCI6MCwiZGVwYXJ0bWVudCI6Mywic3ViamVjdCI6MiwicWFfaXRlbV9yZXN1bHQiOnsic2VhcmNoX2lkIjoxODIxMzk4MTY2NDkyMjA4LCJyZXNfaWQiOjE4MjEzOTgxNzM3MTE0MDgsIml0ZW1faWQiOjAsInJpY2hfdGV4dCI6IiIsIm9jcl90ZXh0IjoiIiwiYW5zd2VyIjoiIiwiaXNfb3JpZ2luIjp0cnVlLCJjYW5fbGxtX3NvbHZlZCI6ZmFsc2UsIm1hcmtkb3duX2dyYXlfcHVibGlzaCI6dHJ1ZSwiaGFzX2hpbnQiOnRydWUsImRldGVjdGlvbl90eXBlIjoyLCJzZWFyY2hfdHlwZSI6MX0sImVudHJhbmNlX3R5cGUiOjh9fUoqChNzOnNlcnZlcl9tZXNzYWdlX2lkEhM3NDYwNDQ3MTE5MjAwMjQxNjk5SjQKEGE6ZXZlbnRfdHJhY2tpbmcSIHsibXNnX3N1Yl90eXBlIjoicWFfbGxtX3Jlc3VsdCJ9SgsKBnM6bW9kZRIBMEp3ChNzOmNsaWVudF9tZXNzYWdlX2lkEmBhcHBfaWQ6NTIwOTQ3OmJvdDpDb21iaW5lUWFCb3Q6cmVwbHlfdG9fbXNnOjA6ZXh0cmE6Y29udmVyc2F0aW9uOjc0NjA0NDY4OTg2MjE1OTU5NTY6dHlwZTphdmF0YXJK6QEKCXM6YWRkX2V4dBLbAXsiYTplbW90aW9uIjoie1wiZW1vdGlvbl9pbnRlbnNpdHlcIjoxLFwiZW1vdGlvbl90eXBlXCI6OH0iLCJhOmV2ZW50X3RyYWNraW5nIjoie1wibXNnX3N1Yl90eXBlXCI6XCJxYV9sbG1fcmVzdWx0XCJ9IiwiYTppbnRlbmQiOiIxIiwiYTpxYV9zZWFyY2hfcmVzdWx0X2lkIjoiMTgyMTM5ODE2NjQ5MjIwODoxODIxMzk4MTczNzExNDA4IiwiYTpzY2hvb2xfZGVwYXJ0bWVudCI6IjMifUoYChNhOnNjaG9vbF9kZXBhcnRtZW50EgEzSjUKCWE6ZW1vdGlvbhIoeyJlbW90aW9uX2ludGVuc2l0eSI6MSwiZW1vdGlvbl90eXBlIjo4fUo6ChVhOnFhX3NlYXJjaF9yZXN1bHRfaWQSITE4MjEzOTgxNjY0OTIyMDg6MTgyMTM5ODE3MzcxMTQwOEotChxzOnNlcnZlcl9tZXNzYWdlX2NyZWF0ZV90aW1lEg0xNzM3MDIwNzIxNDQzSg0KCGE6aW50ZW5kEgExShMKCXM6Yml6X2FpZBIGNTIwOTQ3Sl4KC3M6ZWRpdF9pbmZvEk97ImNvbnRlbnRfaXNfZWRpdGVkIjp0cnVlLCJjb250ZW50X2VkaXRvciI6MCwiY29udGVudF9lZGl0X3RpbWUiOjE3MzcwMjA3MjE0MjV9UKOSg/TGMliRkoP0xjJgAGgAcjdNUzR3TGpBQkFBQUEycUExeEdpNmI4cmhqeWotM1RvNk9fMEgzdm5OV0ZIUTJVNTh4OTVWRElniAEAEPil2bj6+YoDGAA6IjIwMjUwMTE2MTc0NjU4QUJFMTk5MDFEQjg3MzIwRDFCMzRQmIyJ9MYyWK2MifTGMg==
+    """
     # unpack(base64_str)  # 单个测试
 
     create_parent_and_children()  # 检查父文件夹是否存在，如果不存在则创建父文件夹和所有子文件夹。
@@ -451,9 +452,9 @@ if __name__ == '__main__':
 
     mango_json()  # mango表转json
 
-
 """
-第二代版本:在筛选的时候，将cardStem保留，去掉下级conText中的内容
-        与第一版区别: 题目内容较为清晰, 且题目与AI解答所有页面全在一起
+第一代版本:在筛选的时候，将cardStem去除，而是通过截取下级conText中的内容
+        缺点: 题目与AI解析内容分开
+
 
 """
