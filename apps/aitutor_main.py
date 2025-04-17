@@ -39,7 +39,9 @@ def re_mango():
                 f.write(image_content)
             # print(f'{rout_img} ----保存成功')
 
-            return rf" /aresult/{datee_name}/images/{png_name}.png "
+            if pattern_type == 2:
+                return rf"<img src='/aresult/{datee_name}/images/{png_name}.png' />"
+            return rf"/aresult/{datee_name}/images/{png_name}.png"
         except Exception as e:
             print_red(f"{e}-----------------图片下载发送异常--返回原值")
 
@@ -48,21 +50,47 @@ def re_mango():
         try:
             # rich_text = document['qa_biz_params']['qa_item_result']  # 确保提取字段内容
             rich_text = document.get('stem')  # 确保提取字段内容
+            answer_text = document.get('answer')  # 确保提取answer字段内容
+            analysis_text = document.get('analysis')  # 确保提取analysis字段内容
             # print('rich_text:\t', rich_text)
-            if not rich_text:
-                continue
-            rich_text_str = json.dumps(rich_text, ensure_ascii=False)
-
-            if pattern2.search(rich_text_str):
-                print("-匹配到第二种格式的 URL，进行替换")
-                new_text = pattern2.sub(lambda m: dynamic_replacement(m, 2), rich_text_str)
-            else:
-                if pattern1.search(rich_text_str):
-                    print("-匹配到第一种格式的 URL，进行替换")
-                    new_text = pattern1.sub(lambda m: dynamic_replacement(m, 1), rich_text_str)
+            if analysis_text:  # analysis
+                analysis_text_str = json.dumps(analysis_text, ensure_ascii=False)
+                if pattern2.search(analysis_text_str):
+                    print("-匹配到第二种格式的 URL (analysis)，进行替换")
+                    new_analysis = pattern2.sub(lambda m: dynamic_replacement(m, 2), analysis_text_str)
                 else:
-                    print("-未匹配到任何 URL，跳过替换")
-                    new_text = rich_text_str
+                    if pattern1.search(analysis_text_str):
+                        print("-匹配到第一种格式的 URL (analysis)，进行替换")
+                        new_analysis = pattern1.sub(lambda m: dynamic_replacement(m, 1), analysis_text_str)
+                    else:
+                        print("-未匹配到任何 URL (analysis)，跳过替换")
+                        new_analysis = analysis_text_str
+
+            if answer_text:  # answer
+                answer_text_str = json.dumps(answer_text, ensure_ascii=False)
+                if pattern2.search(answer_text_str):
+                    print("-匹配到第二种格式的 URL (answer)，进行替换")
+                    new_answer = pattern2.sub(lambda m: dynamic_replacement(m, 2), answer_text_str)
+                else:
+                    if pattern1.search(answer_text_str):
+                        print("-匹配到第一种格式的 URL (answer)，进行替换")
+                        new_answer = pattern1.sub(lambda m: dynamic_replacement(m, 1), answer_text_str)
+                    else:
+                        print("-未匹配到任何 URL (answer)，跳过替换")
+                        new_answer = answer_text_str
+
+            if rich_text:  # stem
+                rich_text_str = json.dumps(rich_text, ensure_ascii=False)
+                if pattern2.search(rich_text_str):
+                    print("-匹配到第二种格式的 URL (stem)，进行替换")
+                    new_text = pattern2.sub(lambda m: dynamic_replacement(m, 2), rich_text_str)
+                else:
+                    if pattern1.search(rich_text_str):
+                        print("-匹配到第一种格式的 URL (stem)，进行替换")
+                        new_text = pattern1.sub(lambda m: dynamic_replacement(m, 1), rich_text_str)
+                    else:
+                        print("-未匹配到任何 URL (stem)，跳过替换")
+                        new_text = rich_text_str
         except Exception as e:
             print_red(f"-文本解析或替换时发生异常: {e} ----- 替换操作 进行跳过!!!")
             continue
@@ -82,9 +110,27 @@ def re_mango():
                         "stem": updated_rich_text
                     }}
                 )
-                print("文档对图片地址----已更新")
-            else:
-                print("文档未更改")
+                print("文档对图片地址(stem)----已更新")
+            if new_answer != answer_text_str:
+                updated_answer_text = json.loads(new_answer)
+                data_list.update_one(
+                    {"_id": document["_id"]},
+                    {"$set": {
+                        "answer": updated_answer_text
+                    }}
+                )
+                print("文档对图片地址 (answer)----已更新")
+            if new_analysis != analysis_text_str:
+                updated_analysis_text = json.loads(new_analysis)
+                data_list.update_one(
+                    {"_id": document["_id"]},
+                    {"$set": {
+                        "analysis": updated_analysis_text
+                    }}
+                )
+                print("文档对图片地址 (analysis)----已更新")
+            # else:
+            #     print("文档未更改")
 
             print("-" * 40)
         except Exception as e:
@@ -232,7 +278,7 @@ def de_weigh_json():
         {
             "$group": {
                 "_id": {
-                    "$ifNull": ["$analysis", "stem"]  # 如果 content 不存在，使用 another_field
+                    "$ifNull": ["$analysis", "stem"]  # 如果 $analysis 不存在，使用 stem
                 },
                 "firstDocument": {"$first": "$$ROOT"}  # 保留每组的第一条文档
             }
@@ -441,7 +487,7 @@ if __name__ == '__main__':
 
     the_frist()  # 对base64_strings.json 文件里面的base64编码进行去重操作
 
-    circulate()  # mian
+    circulate()  # man
 
     de_weigh_json()  # 对 data_list 表中的内容进行去重操作
 
@@ -450,7 +496,6 @@ if __name__ == '__main__':
     re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址
 
     mango_json()  # mango表转json
-
 
 """
 第二代版本:在筛选的时候，将cardStem保留，去掉下级conText中的内容

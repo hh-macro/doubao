@@ -17,7 +17,8 @@ def push_directory(destination_folder_on_pc, target_folder):
 def hang_image():
     """  将电脑文件destination_folder_on_pc 推入手机目录 target_folder """
     destination_folder_on_pc = r"D:/atimu"
-    target_folder = "/sdcard/DCIM/Camera"
+    # target_folder = "/sdcard/DCIM/Camera"
+    target_folder = "/storage/emulated/0/DCIM"
     # 遍历文件夹中的所有文件
     for root, _, files in os.walk(destination_folder_on_pc):
         for file in files:
