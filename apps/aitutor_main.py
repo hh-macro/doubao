@@ -1,6 +1,6 @@
 # -- coding: utf-8 --
 # @Author: 胡H
-# @File: delete_devices.py
+# @File: aitutor_main.py
 # @Created: 2025/1/21 11:08
 # @LastModified: 2025/4/18
 # Copyright (c) 2025 by 胡H, All Rights Reserved.
