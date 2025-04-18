@@ -1,7 +1,7 @@
 # -- coding: utf-8 --
 # @Author: 胡H
 # @File: delete_devices.py
-# @Created: 2025/1/23 11:08
+# @Created: 2025/1/21 11:08
 # @LastModified: 2025/4/18
 # Copyright (c) 2025 by 胡H, All Rights Reserved.
 # @desc:
@@ -646,7 +646,7 @@ if __name__ == '__main__':
     copy_collection_with_timestamp()  # 原集合data_list复制到新集合并添加时间字段 data_total为目标总集合
 
     processor = MongoDocProcessor()
-    processor.process_documents(data_list)
+    processor.process_documents(data_list)  # 将指定mongo库 保存到本地, 并按指定格式存放
 
     # re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址
 
