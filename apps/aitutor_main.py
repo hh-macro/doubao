@@ -1,4 +1,10 @@
-# -*- coding: utf-8 -*-
+# -- coding: utf-8 --
+# @Author: 胡H
+# @File: delete_devices.py
+# @Created: 2025/1/23 11:08
+# @LastModified:
+# Copyright (c) 2025 by 胡H, All Rights Reserved.
+# @desc:
 import base64
 import json
 import re
@@ -493,9 +499,9 @@ if __name__ == '__main__':
 
     clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
 
-    re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址
+    # re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址
 
-    mango_json()  # mango表转json
+    # mango_json()  # mango表转json
 
 """
 第二代版本:在筛选的时候，将cardStem保留，去掉下级conText中的内容

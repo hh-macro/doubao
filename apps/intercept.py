@@ -28,7 +28,7 @@ def response(flow: http.HTTPFlow) -> None:
         # time.sleep(5)  # 等待 5 秒
         # response = requests.get(flow.request.url, timeout=10)
         # flow_res = response.content
-        time.sleep(15)
+        time.sleep(10)
         flow_res = flow.response.content
         base64_str = base64.b64encode(flow_res).decode('utf-8')
         # print(base64_str)

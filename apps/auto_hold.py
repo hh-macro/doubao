@@ -278,6 +278,7 @@ def hold_folder(device_code='6c8f7fe3'):
             try:
                 d(resourceId='com.aitutor.hippo:id/na').click(timeout=5)
                 d(resourceId='com.aitutor.hippo:id/2s')[0].click(timeout=5)
+                time.sleep(5)
                 d(text='重试').click_exists()
             except Exception as e:
                 print_red(f"图片加载异常，将重新搜索题目 : {e}")

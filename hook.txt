@@ -1,0 +1,8 @@
+一、开启frida服务
+adb shell
+cd data/local/tmp
+./frida-server-16.5.9-android-arm64
+
+二、hook注入
+frida -U -f com.aitutor.hippo -l byteDance.js
+
