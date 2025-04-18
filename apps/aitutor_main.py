@@ -2,7 +2,7 @@
 # @Author: 胡H
 # @File: delete_devices.py
 # @Created: 2025/1/23 11:08
-# @LastModified:
+# @LastModified: 2025/4/18
 # Copyright (c) 2025 by 胡H, All Rights Reserved.
 # @desc:
 import base64
@@ -486,6 +486,64 @@ def unpack(base64_str, key_cache):
     json_save_base64(filtered_list, key_cache)  # 存入 data_list 表中
 
 
+def deduplicate_mongo_data():
+    """ 按stem字段去重，保留最早出现的文档并去掉无用字段"""
+
+    # 获取所有唯一的stem值及其对应的最早出现的文档
+    pipeline = [
+        {"$sort": {"_id": 1}},  # 按_id升序排序，确保先出现的文档被保留
+        {"$group": {
+            "_id": "$stem",
+            "doc": {"$first": "$$ROOT"}
+        }},
+        {"$replaceRoot": {"newRoot": "$doc"}},
+        {"$project": {
+            "answer_title": 0,
+            "stem_title": 0,
+            "analysis_title": 0,
+            "analysis_loading": 0,
+            "retry_attr": 0,
+            "allow_edit_stem": 0,
+            "CanReasoning": 0,
+            "think": 0
+        }}
+    ]
+
+    # 执行聚合管道
+    deduplicated_data = list(data_list.aggregate(pipeline))
+
+    # 清空原集合
+    data_list.delete_many({})
+
+    # 插入去重后的数据
+    if deduplicated_data:
+        data_list.insert_many(deduplicated_data)
+
+    print(f"去重完成，共保留 {len(deduplicated_data)} 条记录")
+
+
+def copy_collection_with_timestamp(data_total='data_total'):
+    """ 原集合data_list复制到新集合并添加时间字段 data_total为目标总集合"""
+
+    current_timestamp = datetime.now()
+    # print(current_timestamp)
+    # 复制数据并添加时间字段
+    documents = data_list.find()
+    copied_documents = []
+    for doc in documents:
+        # 复制文档并添加时间字段
+        new_doc = doc.copy()
+        new_doc['timestamp'] = current_timestamp
+        copied_documents.append(new_doc)
+
+    # 插入到目标集合
+    if copied_documents:
+        db[data_total].insert_many(copied_documents)
+        print(f"已成功将`data_list`复制 {len(copied_documents)} 出总集合中")
+    else:
+        print("源集合中没有数据。")
+
+
 if __name__ == '__main__':
     # unpack(base64_str)  # 单个测试
 
@@ -497,7 +555,11 @@ if __name__ == '__main__':
 
     de_weigh_json()  # 对 data_list 表中的内容进行去重操作
 
-    clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
+    # clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
+
+    deduplicate_mongo_data()  # 按stem字段去重，保留最早出现的文档并去掉无用字段
+
+    copy_collection_with_timestamp()  # 原集合data_list复制到新集合并添加时间字段 data_total为目标总集合
 
     # re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址
 

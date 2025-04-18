@@ -7,12 +7,13 @@ def main_auto():
     # 启动子进程
     mitmdump_process = start_mitmdump()  # 启动 mitmdump
     time.sleep(5)
-    print("mitmdump 已启动，等待 15 秒......")
+    print("mitmdump 已启动，等待 5 秒......")
     try:
         open("image_cache", "w").close()  # 清空缓存文件
 
         print("开始运行主程序--\t hold_folder() ")
         print("-" * 60)
+        time.sleep(5)
         hold_folder()  # 主进程
     except Exception as e:
         print_red(f"hold_folder() 函数运行时发生异常: {e}")

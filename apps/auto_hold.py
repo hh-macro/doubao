@@ -290,7 +290,7 @@ def hold_folder(device_code='6c8f7fe3'):
                 d(resourceId='com.aitutor.hippo:id/2s')[0].click(timeout=5)
 
             clear_directory(target_folder)  # 清空手机目录
-            time.sleep(6)
+            time.sleep(5)
             d(text='重试').click_exists()
             if not d(resourceId='com.aitutor.hippo:id/aqr', text='1').exists(timeout=120):
                 print_red(f"网络请求异常\t---- {item.stem}\t 题目无法加载!!! 进行跳过")
@@ -314,7 +314,7 @@ def hold_folder(device_code='6c8f7fe3'):
 
                     aog_page = d(resourceId='com.aitutor.hippo:id/aqr', text=f'{io}').click_exists()
                     if not aog_page:
-                        time.sleep(3)
+                        time.sleep(2)
                         print(f'页面题目结果一共{io - 1}道题目')
                         break
             except Exception as e:
