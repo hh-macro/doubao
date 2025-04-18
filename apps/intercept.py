@@ -74,5 +74,5 @@ if __name__ == '__main__':
     open("image_cache", "w").close()  # 清空缓存文件
     mitmdump_process = start_mitmdump()  # 启动 mitmdump
 
-    time.sleep(60)
+    time.sleep(600)
     stop_mitmdump(mitmdump_process)  # 关闭 mitmdump

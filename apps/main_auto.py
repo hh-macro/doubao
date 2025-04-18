@@ -4,16 +4,17 @@ from auto_hold import hold_folder, print_red
 
 
 def main_auto():
+    open("image_cache", "w").close()  # 清空缓存文件
     # 启动子进程
     mitmdump_process = start_mitmdump()  # 启动 mitmdump
-    time.sleep(5)
-    print("mitmdump 已启动，等待 5 秒......")
+    time.sleep(10)
+    print("mitmdump 已启动，等待 10 秒......")
     try:
         open("image_cache", "w").close()  # 清空缓存文件
 
         print("开始运行主程序--\t hold_folder() ")
         print("-" * 60)
-        time.sleep(5)
+        time.sleep(3)
         hold_folder()  # 主进程
     except Exception as e:
         print_red(f"hold_folder() 函数运行时发生异常: {e}")

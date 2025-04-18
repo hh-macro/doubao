@@ -7,6 +7,7 @@
 # @desc:
 import base64
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -15,6 +16,7 @@ import requests
 from protobuf_to import GetByUserInit
 import pymongo
 from bson.json_util import dumps
+from bson import json_util
 
 client = pymongo.MongoClient("localhost", 27017)
 
@@ -141,6 +143,12 @@ def re_mango():
             print("-" * 40)
         except Exception as e:
             print_red(f"更新 MongoDB 文档时发生异常：{e}")
+
+
+def empty_mongo(bank):
+    # 清空mongo
+    for collection_name in db.list_collection_names():
+        bank.drop()
 
 
 # 文本前面加上红色前缀
@@ -487,17 +495,50 @@ def unpack(base64_str, key_cache):
 
 
 def deduplicate_mongo_data():
-    """ 按stem字段去重，保留最早出现的文档并去掉无用字段"""
+    """按stem字段去重，优先保留有answer且内容更长的文档，其次考虑analysis，最后保留更早的文档"""
 
-    # 获取所有唯一的stem值及其对应的最早出现的文档
+    # 聚合管道：添加辅助字段并按优先级排序后分组取第一条
     pipeline = [
-        {"$sort": {"_id": 1}},  # 按_id升序排序，确保先出现的文档被保留
+        # 添加辅助字段用于排序
+        {"$addFields": {
+            "hasAnswer": {
+                "$cond": {
+                    "if": {"$gt": [{"$strLenCP": {"$ifNull": ["$answer", ""]}}, 0]},
+                    "then": 1,
+                    "else": 0
+                }
+            },
+            "answerLength": {"$strLenCP": {"$ifNull": ["$answer", ""]}},
+            "hasAnalysis": {
+                "$cond": {
+                    "if": {"$gt": [{"$strLenCP": {"$ifNull": ["$analysis", ""]}}, 0]},
+                    "then": 1,
+                    "else": 0
+                }
+            },
+            "analysisLength": {"$strLenCP": {"$ifNull": ["$analysis", ""]}}
+        }},
+        # 按多条件排序（优先级：有answer > answer长度 > 有analysis > analysis长度 > 创建时间）
+        {"$sort": {
+            "hasAnswer": -1,
+            "answerLength": -1,
+            "hasAnalysis": -1,
+            "analysisLength": -1,
+            "_id": 1  # 确保_id小的（先创建的）优先
+        }},
+        # 按stem分组取第一条
         {"$group": {
             "_id": "$stem",
             "doc": {"$first": "$$ROOT"}
         }},
+        # 展开为文档根结构
         {"$replaceRoot": {"newRoot": "$doc"}},
+        # 移除临时字段和无用字段
         {"$project": {
+            "hasAnswer": 0,
+            "answerLength": 0,
+            "hasAnalysis": 0,
+            "analysisLength": 0,
             "answer_title": 0,
             "stem_title": 0,
             "analysis_title": 0,
@@ -509,13 +550,11 @@ def deduplicate_mongo_data():
         }}
     ]
 
-    # 执行聚合管道
+    # 执行聚合
     deduplicated_data = list(data_list.aggregate(pipeline))
 
-    # 清空原集合
+    # 清空原集合并插入去重数据
     data_list.delete_many({})
-
-    # 插入去重后的数据
     if deduplicated_data:
         data_list.insert_many(deduplicated_data)
 
@@ -537,11 +576,56 @@ def copy_collection_with_timestamp(data_total='data_total'):
         copied_documents.append(new_doc)
 
     # 插入到目标集合
-    if copied_documents:
-        db[data_total].insert_many(copied_documents)
-        print(f"已成功将`data_list`复制 {len(copied_documents)} 出总集合中")
-    else:
-        print("源集合中没有数据。")
+    try:
+        if copied_documents:
+            db[data_total].insert_many(copied_documents)
+            print(f"已成功将`data_list`复制 {len(copied_documents)} 出总集合中")
+        else:
+            print("源集合中没有数据。")
+    except Exception as e:
+        print(print(f"批量写入时发生错误: {e}"))
+
+
+class MongoDocProcessor:
+    """ 将指定mongo库 保存到本地, 并按指定格式存放"""
+
+    def __init__(self, base_output_dir="D:\\aresult"):
+        self.base_output_dir = base_output_dir
+
+    def _parse_timestamp(self):
+        """生成当天日期 ---> 2025-4-18 """
+        return datetime.now().strftime("%Y-%m-%d")
+
+    def _get_output_paths(self, doc):
+        """生成目标路径"""
+        dt = self._parse_timestamp()
+
+        base_dir = os.path.join(self.base_output_dir, dt)
+        target_dir = os.path.join(base_dir, doc["image_name"])
+        oid = str(doc['_id'])
+        # print(oid)
+        filename = f"{oid}.json"
+
+        return target_dir, filename, oid
+
+    def process_documents(self, data_list):
+        """处理文档主方法"""
+
+        cursor = data_list.find({})  # 查找并将data_list库内容转换为JSON格式
+        documents = json_util.loads(json_util.dumps(cursor))
+
+        for doc in documents:
+            try:
+                target_dir, filename, oid = self._get_output_paths(doc)
+                os.makedirs(target_dir, exist_ok=True)
+
+                file_path = os.path.join(target_dir, filename)
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json_str = json_util.dumps(doc, ensure_ascii=False, indent=2)
+                    f.write(json_str)
+                print(f'文档 {oid}\t已成功保存到本地\t{file_path}')
+            except Exception as e:
+                print(f"处理文档 {doc.get('_id', '')} 失败: {str(e)}")
 
 
 if __name__ == '__main__':
@@ -561,9 +645,14 @@ if __name__ == '__main__':
 
     copy_collection_with_timestamp()  # 原集合data_list复制到新集合并添加时间字段 data_total为目标总集合
 
+    processor = MongoDocProcessor()
+    processor.process_documents(data_list)
+
     # re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址
 
     # mango_json()  # mango表转json
+
+    # empty_mongo(bank=data_list)  # 清空data_list库
 
 """
 第二代版本:在筛选的时候，将cardStem保留，去掉下级conText中的内容
