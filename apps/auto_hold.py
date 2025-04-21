@@ -316,6 +316,7 @@ def hold_folder(device_code='6c8f7fe3'):
                     if not aog_page:
                         time.sleep(2)
                         print(f'页面题目结果一共{io - 1}道题目')
+                        time.sleep(4)
                         break
             except Exception as e:
                 print_red(f"翻页过程出现故障, 将中断翻页搜索下一个题目---- {e}")
