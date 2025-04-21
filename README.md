@@ -1,5 +1,7 @@
 # AiXue
 
+https://github.com/frida/frida/releases
+
 ##### 一、推送frida-server
 
 ```
