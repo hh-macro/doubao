@@ -12,7 +12,7 @@ import requests
 import json
 
 
-def detection_coord(file_name, file_path):
+def detection_coord(file_name, file_path, timu_file='atimu_all'):
     headers = {
         "accept": "application/json; charset=utf-8",
         "x-vc-bdturing-sdk-version": "3.6.2.cn",
@@ -62,7 +62,7 @@ def detection_coord(file_name, file_path):
         "device_id": "3044960110929561"
     }
 
-    with open(f'D:\\atimu_all\\{file_name}.jpg', "rb") as image_file:
+    with open(f'D:/{timu_file}/{file_name}.jpg', "rb") as image_file:
         image_data = image_file.read()
 
     base64_encoded_data = base64.b64encode(image_data)
@@ -95,7 +95,7 @@ def detection_coord(file_name, file_path):
         Pos = QuestionBoxe.get('Pos', {})
         Pos_list.append(Pos)
 
-    with open(f'{file_path}/QuestionBoxes.txt', 'a') as f:
+    with open(f'{file_path}/QuestionBoxes.txt', 'w') as f:
         for Pos in Pos_list:
             f.write(f'{Pos}\n')
 

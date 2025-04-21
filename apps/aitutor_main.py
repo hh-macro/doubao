@@ -9,6 +9,7 @@ import base64
 import json
 import os
 import re
+import shutil
 import time
 from pathlib import Path
 from datetime import datetime
@@ -17,6 +18,8 @@ from protobuf_to import GetByUserInit
 import pymongo
 from bson.json_util import dumps
 from bson import json_util
+
+from com import detection_coord  #
 
 client = pymongo.MongoClient("localhost", 27017)
 
@@ -592,6 +595,10 @@ class MongoDocProcessor:
     def __init__(self, base_output_dir="D:\\aresult"):
         self.base_output_dir = base_output_dir
 
+    def copy_image(self, source_path, destination_path):
+        # 将一张图片从一个文件夹复制到另一个文件夹
+        shutil.copy2(source_path, destination_path)
+
     def _parse_timestamp(self):
         """生成当天日期 ---> 2025-4-18 """
         return datetime.now().strftime("%Y-%m-%d")
@@ -601,16 +608,40 @@ class MongoDocProcessor:
         dt = self._parse_timestamp()
 
         base_dir = os.path.join(self.base_output_dir, dt)
-        target_dir = os.path.join(base_dir, doc["image_name"])
+        # target_dir = os.path.join(base_dir, doc["image_name"])
         oid = str(doc['_id'])
         # print(oid)
+        target_dir = os.path.join(base_dir, doc["image_name"], oid)
+
         filename = f"{oid}.json"
 
         return target_dir, filename, oid
 
+    def coordinate(self):
+        image_cursor = data_list.find({"image_name": {"$exists": True}}, {"image_name": 1, "_id": 0})
+        unique_image_names = set()
+        # 遍历查询结果并添加到集合中
+        for doc in image_cursor:
+            image_name = doc.get("image_name")
+            unique_image_names.add(image_name)
+        unique_image_names = list(unique_image_names)  # 转换为列表
+
+        for unique_image_name in unique_image_names:
+            base_dir = os.path.join(self.base_output_dir, self._parse_timestamp())
+
+            target_dir_new = os.path.join(base_dir, unique_image_name)
+
+            file_name_base = os.path.basename(target_dir_new)
+            file_path_dir = os.path.dirname(target_dir_new)
+            print('-' * 40)
+            detection_coord(file_name_base, target_dir_new)  #
+
+            destination_folder = rf"D:\atimu_all\{file_name_base}.jpg"
+            source_image = rf'D:\aresult\2025-04-21\{file_name_base}\{file_name_base}.jpg'
+            self.copy_image(destination_folder, source_image)
+
     def process_documents(self, data_list):
         """处理文档主方法"""
-
         cursor = data_list.find({})  # 查找并将data_list库内容转换为JSON格式
         documents = json_util.loads(json_util.dumps(cursor))
 
@@ -619,13 +650,19 @@ class MongoDocProcessor:
                 target_dir, filename, oid = self._get_output_paths(doc)
                 os.makedirs(target_dir, exist_ok=True)
 
+                # print('target_dir:\t', target_dir)
+                # D:\aresult\2025-04-21\file_aliyun@1bbce84d-77f0-47b4-a551-8b37a3180751-569\file_aliyun@1bbce84d-77f0-47b4-a551-8b37a3180751-569
+
                 file_path = os.path.join(target_dir, filename)
+
                 with open(file_path, 'w', encoding='utf-8') as f:
                     json_str = json_util.dumps(doc, ensure_ascii=False, indent=2)
                     f.write(json_str)
                 print(f'文档 {oid}\t已成功保存到本地\t{file_path}')
             except Exception as e:
                 print(f"处理文档 {doc.get('_id', '')} 失败: {str(e)}")
+
+        self.coordinate()
 
 
 if __name__ == '__main__':
@@ -652,7 +689,7 @@ if __name__ == '__main__':
 
     # mango_json()  # mango表转json
 
-    # empty_mongo(bank=data_list)  # 清空data_list库
+    empty_mongo(bank=data_list)  # 清空data_list库
 
 """
 第二代版本:在筛选的时候，将cardStem保留，去掉下级conText中的内容
