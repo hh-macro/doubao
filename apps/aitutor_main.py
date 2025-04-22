@@ -291,19 +291,64 @@ def de_weigh_json():
     # ]
 
     # 执行聚合管道获取去重后的文档
+    # pipeline = [
+    #     {
+    #         "$group": {
+    #             "_id": {
+    #                 "$ifNull": ["$analysis", "stem", "answer"]  # 如果 $analysis 不存在，使用 stem
+    #             },
+    #             "firstDocument": {"$first": "$$ROOT"}  # 保留每组的第一条文档
+    #         }
+    #     },
+    #     {
+    #         "$replaceRoot": {"newRoot": "$firstDocument"}  # 恢复文档的原始结构
+    #     }
+    # ]
     pipeline = [
         {
             "$group": {
-                "_id": {
-                    "$ifNull": ["$analysis", "stem"]  # 如果 $analysis 不存在，使用 stem
-                },
-                "firstDocument": {"$first": "$$ROOT"}  # 保留每组的第一条文档
+                "_id": "$stem",  # 按 stem 字段分组
+                "documents": {"$push": "$$ROOT"}  # 将组内的所有文档推入列表
+            }
+        },
+        {
+            "$addFields": {
+                "documents": {
+                    "$map": {
+                        "input": "$documents",
+                        "as": "doc",
+                        "in": {
+                            "doc": "$$doc",
+                            "field_count": {
+                                "$size": {
+                                    "$objectToArray": "$$doc"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "$project": {
+                "documents": {
+                    "$sortArray": {
+                        "input": "$documents",
+                        "sortBy": {"field_count": -1}  # 按字段数量降序排序
+                    }
+                }
+            }
+        },
+        {
+            "$project": {
+                "firstDocument": {"$arrayElemAt": ["$documents.doc", 0]}  # 保留字段最多的文档
             }
         },
         {
             "$replaceRoot": {"newRoot": "$firstDocument"}  # 恢复文档的原始结构
         }
     ]
+
     unique_documents = list(collection.aggregate(pipeline))
 
     # 提取唯一文档的 _id 列表
