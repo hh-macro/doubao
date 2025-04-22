@@ -8,7 +8,7 @@ def main_auto():
     # 启动子进程
     mitmdump_process = start_mitmdump()  # 启动 mitmdump
     time.sleep(10)
-    print("mitmdump 已启动，等待 10 秒......")
+    print("等待 10 秒加载 ......")
     try:
         open("image_cache", "w").close()  # 清空缓存文件
 

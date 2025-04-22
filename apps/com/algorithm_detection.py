@@ -87,7 +87,7 @@ def detection_coord(file_name, file_path, timu_file='atimu_all'):
     }
     data = json.dumps(data, separators=(',', ':'))
     response = requests.post(url, headers=headers, cookies=cookies, params=params, data=data)
-
+    print(response.json())
     QuestionBoxes = json.loads(response.text)['QuestionBoxes'][0]
     Pos_list = []
 
@@ -105,4 +105,4 @@ def detection_coord(file_name, file_path, timu_file='atimu_all'):
 
 
 if __name__ == '__main__':
-    detection_coord(file_name='file_aliyun@1bba98a2-6239-4be1-8965-b225570423b2-5949', file_path='D:/atimu')
+    detection_coord(file_name='file_aliyun@1bb2e6e8-c183-4ff8-b215-aa646c6d918f-8158', file_path='D:/atimu_all')

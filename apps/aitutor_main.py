@@ -174,7 +174,7 @@ def create_parent_and_children():
     """  检查父文件夹是否存在，如果不存在则创建父文件夹和所有子文件夹。"""
     datee_name = time_date()
     parent_folder = rf"D:/aresult/{datee_name}"
-    child_folders = ["images", "timu"]
+    # child_folders = ["images", "timu"]
     parent_path = Path(parent_folder)
 
     # 检查父文件夹是否存在，如果不存在则创建
@@ -182,9 +182,9 @@ def create_parent_and_children():
         print(f"父文件夹 {parent_folder} 不存在，正在创建父文件夹及其子文件夹...")
         parent_path.mkdir(parents=True, exist_ok=True)  # 创建父文件夹
         # 创建所有子文件夹
-        for child in child_folders:
-            (parent_path / child).mkdir(exist_ok=True)
-            print(f"已创建子文件夹：{parent_folder}/{child}")
+        # for child in child_folders:
+        #     (parent_path / child).mkdir(exist_ok=True)
+        #     print(f"已创建子文件夹：{parent_folder}/{child}")
 
 
 # 对base64_strings.json 文件里面的base64编码进行去重操作
@@ -583,6 +583,7 @@ def copy_collection_with_timestamp(data_total='data_total'):
         if copied_documents:
             db[data_total].insert_many(copied_documents)
             print(f"已成功将`data_list`复制 {len(copied_documents)} 出总集合中")
+            print('-' * 40)
         else:
             print("源集合中没有数据。")
     except Exception as e:
@@ -637,7 +638,9 @@ class MongoDocProcessor:
             detection_coord(file_name_base, target_dir_new)  #
 
             destination_folder = rf"D:\atimu_all\{file_name_base}.jpg"
-            source_image = rf'D:\aresult\2025-04-21\{file_name_base}\{file_name_base}.jpg'
+            source_image = rf'D:\aresult\{self._parse_timestamp()}\{file_name_base}\{file_name_base}.jpg'
+            print(destination_folder)
+            print(source_image)
             self.copy_image(destination_folder, source_image)
 
     def process_documents(self, data_list):
@@ -668,7 +671,7 @@ class MongoDocProcessor:
 if __name__ == '__main__':
     # unpack(base64_str)  # 单个测试
 
-    create_parent_and_children()  # 检查父文件夹是否存在，如果不存在则创建父文件夹和所有子文件夹。
+    # create_parent_and_children()  # 检查父文件夹是否存在，如果不存在则创建父文件夹和所有子文件夹。
 
     the_frist()  # 对base64_strings.json 文件里面的base64编码进行去重操作
 

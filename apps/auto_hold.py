@@ -1,3 +1,5 @@
+import imghdr
+import os
 import time
 import subprocess
 from pathlib import Path
@@ -257,18 +259,26 @@ def hold_folder(device_code='6c8f7fe3'):
     target_folder = "/storage/emulated/0/DCIM"
     directory_file = r"D:/atimu"
 
-    create_parent_and_children()  # 创建文件夹
+    # create_parent_and_children()  # 创建文件夹
     clear_directory(target_folder)  # 第一次清空手机目录
 
     path = Path(directory_file)
     # 遍历目录及其所有子目录
     for item in path.rglob("*"):  # rglob("*") 递归所有
-        if item.is_file():  # 只处理文件
+        if item.is_file() and item.suffix.lower() == ".jpg":  # 只处理文件
+            if imghdr.what(item) is None:  # 检测文件是否损坏
+                item.unlink()  # 删除文件
+                print(f"文件损坏: {item} 已删除")
+                continue
+            elif item.is_dir():
+                # 检查目录是否为空
+                if len(list(item.iterdir())) == 0:
+                    print(f"当前 {item}\t 数据源为空")
             print('')
             print(f"图片:\t{item} 正在处理...")
 
             file_name = item.name  # 获取文件名
-            copy_file(file_name)  # 复制图片
+            # copy_file(file_name)  # 复制图片
             d(text='拍题答疑').click_exists()
             d(text='再拍一页').click_exists(timeout=2)
             push_directory(item, target_folder)  # 传入图片
@@ -314,9 +324,11 @@ def hold_folder(device_code='6c8f7fe3'):
 
                     aog_page = d(resourceId='com.aitutor.hippo:id/aqr', text=f'{io}').click_exists()
                     if not aog_page:
-                        time.sleep(2)
                         print(f'页面题目结果一共{io - 1}道题目')
-                        time.sleep(4)
+                        time.sleep(8)
+                        destination_path = r'D:\atimu_all'
+                        shutil.copy2(item, destination_path)
+                        os.remove(item)  # 删除当前图片
                         break
             except Exception as e:
                 print_red(f"翻页过程出现故障, 将中断翻页搜索下一个题目---- {e}")
