@@ -8,6 +8,7 @@ from mitmproxy import http
 
 # 用于存储所有 base64 编码的字符串
 base64_list = []
+search_list = []
 
 
 def image_cache_r():
@@ -18,16 +19,9 @@ def image_cache_r():
 
 
 def response(flow: http.HTTPFlow) -> None:
-    if "zijieapi.com" not in flow.request.url: return
-    target_url = "https://imapi-oth.zijieapi.com/v1/message/get_by_user"
-    # print(flow.request.url)
-    if target_url in flow.request.url:
-        # 获取响应内容
-        # print(flow.response.text)
-        # print("第一次响应")
-        # time.sleep(5)  # 等待 5 秒
-        # response = requests.get(flow.request.url, timeout=10)
-        # flow_res = response.content
+    if (
+            "zijieapi.com" in flow.request.url and "https://imapi-oth.zijieapi.com/v1/message/get_by_user" in flow.request.url):
+        # print(flow.request.url)
         time.sleep(5)
         flow_res = flow.response.content
         base64_str = base64.b64encode(flow_res).decode('utf-8')
@@ -41,13 +35,36 @@ def response(flow: http.HTTPFlow) -> None:
         else:
             print("截取到包，但程序并未运行---为错误包")
 
+    if (
+            "api5-normal-lq.hippoaixue.com" in flow.request.url and "https://api5-normal-lq.hippoaixue.com/hippo/turing/qs/v1/detection/get_or_create" in flow.request.url):
+        time.sleep(3)
+        try:
+            flow_json = flow.response.json()
+            search_pieces_list = flow_json['question_search']['search_pieces']
+            key = image_cache_r()
+            if key:
+                for search_pieces in search_pieces_list:
+                    search_list.append({
+                        'image_name': key,
+                        'conversation_id': search_pieces['conversation_id'],
+                        'pos': search_pieces['pos']
+                    })
+                with open('search_message_list.json', 'w') as f:
+                    json.dump(search_list, f, indent=4)
+                print(f"search_message_list 列表已成功保存......")
+            else:
+                print("截取到search_message_list 列表, 但程序并未运行---为错误包")
+        except Exception as e:
+            print(e)
+            return
 
-# 保存 base64_strings 到文件
+
 def save_base64_strings_to_file(file_path):
+    # 保存 base64_strings 到文件
     with open(file_path, 'w') as file:
         json.dump(base64_list, file, indent=4)
     now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{now_time}:\t 文件覆盖保存成功！ ----  {file_path}")
+    print(f"{now_time}:\t 文件覆盖保存成功！ ------  {file_path}")
 
 
 # 新增函数：启动 mitmdump
@@ -61,6 +78,7 @@ def start_mitmdump():
 
 # 新增函数：关闭 mitmdump
 def stop_mitmdump(process):
+    open("image_cache", "w").close()  # 清空缓存文件
     process.terminate()  # 发送终止信号
     process.wait()  # 等待进程结束
     print("mitmdump 已关闭")

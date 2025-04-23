@@ -10,8 +10,6 @@ def main_auto():
     time.sleep(10)
     print("等待 10 秒加载 ......")
     try:
-        open("image_cache", "w").close()  # 清空缓存文件
-
         print("开始运行主程序--\t hold_folder() ")
         print("-" * 60)
         time.sleep(3)
