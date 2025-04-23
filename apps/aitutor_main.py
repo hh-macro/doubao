@@ -402,7 +402,7 @@ def contains_chinese(s):
 # 将 unpack() 方法筛选成功的list追加存入 data_list.json 文件中"
 def json_save_base64(filtered_list, key_cache):
     """ 将 unpack() 方法筛选成功的list存入 data_list表中"""
-    jso1_list = [json.loads(saw2) for saw2 in filtered_list]
+    jso1_list = [saw2 for saw2 in filtered_list]
     # print('12123', len(jso1_list), jso1_list)
     # 向每个字典中添加一个新的键值对
     for item in jso1_list:
