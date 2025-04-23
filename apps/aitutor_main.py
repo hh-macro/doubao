@@ -255,24 +255,32 @@ def clear_json_file(file_path):
 
 # 对data_list'表中的内容进行去重操作
 def de_weigh_json():
-    # 定义聚合管道
     # pipeline = [
     #     {
+    #         "$group": {
+    #             "_id": "$stem",  # 按 stem 字段分组
+    #             "documents": {"$push": "$$ROOT"}  # 将组内的所有文档推入列表
+    #         }
+    #     },
+    #     {
     #         "$addFields": {
-    #             # 判断字段是否存在，并清理嵌套字段中的 HTML 标签
-    #             "clean_text": {
-    #                 "$trim": {
-    #                     "input": {
-    #                         "$replaceAll": {
-    #                             # 如果 ocr_text 存在，使用 ocr_text，否则使用 analysis
-    #                             "input": {
-    #                                 "$ifNull": [
-    #                                     "$qa_biz_params.qa_item_result.ocr_text",
-    #                                     "$qa_biz_params.qa_item_result.analysis"
-    #                                 ]
-    #                             },
-    #                             "find": "<.*?>",  # 匹配 HTML 标签
-    #                             "replacement": ""
+    #             "documents": {
+    #                 "$map": {
+    #                     "input": "$documents",
+    #                     "as": "doc",
+    #                     "in": {
+    #                         "doc": "$$doc",
+    #                         "field_count": {
+    #                             "$size": {
+    #                                 "$filter": {
+    #                                     "input": {
+    #                                         "$objectToArray": "$$doc"
+    #                                     },
+    #                                     "cond": {
+    #                                         "$in": ["$$this.k", ["stem", "answer", "analysis"]]
+    #                                     }
+    #                                 }
+    #                             }
     #                         }
     #                     }
     #                 }
@@ -280,24 +288,18 @@ def de_weigh_json():
     #         }
     #     },
     #     {
-    #         "$group": {
-    #             "_id": "$clean_text",  # 按清理后的内容分组
-    #             "firstDocument": {"$first": "$$ROOT"}  # 保留每组的第一条文档
+    #         "$project": {
+    #             "documents": {
+    #                 "$sortArray": {
+    #                     "input": "$documents",
+    #                     "sortBy": {"field_count": -1}  # 按字段数量降序排序
+    #                 }
+    #             }
     #         }
     #     },
     #     {
-    #         "$replaceRoot": {"newRoot": "$firstDocument"}  # 恢复文档的原始结构
-    #     }
-    # ]
-
-    # 执行聚合管道获取去重后的文档
-    # pipeline = [
-    #     {
-    #         "$group": {
-    #             "_id": {
-    #                 "$ifNull": ["$analysis", "stem", "answer"]  # 如果 $analysis 不存在，使用 stem
-    #             },
-    #             "firstDocument": {"$first": "$$ROOT"}  # 保留每组的第一条文档
+    #         "$project": {
+    #             "firstDocument": {"$arrayElemAt": ["$documents.doc", 0]}  # 保留字段最多的文档
     #         }
     #     },
     #     {
@@ -306,8 +308,26 @@ def de_weigh_json():
     # ]
     pipeline = [
         {
+            "$project": {
+                # 创建一个用于分组的字段
+                "group_key": {
+                    "$cond": [
+                        {"$ne": ["$stem", None]},  # 如果 stem 存在
+                        "$stem",
+                        {
+                            "$cond": [
+                                {"$ne": ["$analysis", None]},  # 如果 analysis 存在
+                                "$analysis",
+                                "$answer"  # 否则使用 answer
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
             "$group": {
-                "_id": "$stem",  # 按 stem 字段分组
+                "_id": "$group_key",  # 按 group_key 分组
                 "documents": {"$push": "$$ROOT"}  # 将组内的所有文档推入列表
             }
         },
@@ -321,7 +341,12 @@ def de_weigh_json():
                             "doc": "$$doc",
                             "field_count": {
                                 "$size": {
-                                    "$objectToArray": "$$doc"
+                                    "$filter": {
+                                        "input": {"$objectToArray": "$$doc"},
+                                        "cond": {
+                                            "$in": ["$$this.k", ["stem", "answer", "analysis"]]
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -348,7 +373,6 @@ def de_weigh_json():
             "$replaceRoot": {"newRoot": "$firstDocument"}  # 恢复文档的原始结构
         }
     ]
-
     unique_documents = list(collection.aggregate(pipeline))
 
     # 提取唯一文档的 _id 列表
@@ -411,8 +435,8 @@ def mango_json():
 def unpack(base64_str, key_cache):
     """ 核心方法 对读取的 base64码  进行转换识别操作，再通过层层筛选，得到所需josn结果 """
     dict_result = GetByUserInit().parse(base64.b64decode(base64_str)).to_json(indent=2)
-
-    filtered_messages = []  # 存放 dict_result 包含中文的字段
+    # print(dict_result)
+    filtered_messages = []  # 存放 dict_result 包含中文的字段 ----> 此内容存放 未合并 未转换 的原始数据
     json_data = json.loads(dict_result)
 
     for inner_message in json_data.get("innerList", []):
@@ -434,108 +458,71 @@ def unpack(base64_str, key_cache):
                 dn_message["promptContent"] = filtered_prompt_content
                 filtered_messages.append(dn_message)
 
-    print(len(filtered_messages), end=" ")
-    print(filtered_messages)
-    # # 去掉每个字典中的 cardStem 字段
-    # for msg in filtered_messages:
-    #     msg.pop("cardStem", None)
-    #
-    # print(len(filtered_messages), end=" ")
+    # print(len(filtered_messages), end=" ")  # 此内容为未合并为转换的原始数据
     # print(filtered_messages)
+    # 创建包含 conversationId 和 cardStem 的字典列表
+    conversation_card_list = []
+    for message in filtered_messages:
+        card_stem = message.get('cardStem')
+        conversation_id = message.get('conversationId')
+        if card_stem and conversation_id:
+            conversation_card_list.append({
+                'conversationId': conversation_id,
+                'cardStem': card_stem
+            })
 
-    # # promptContent字符为空的先去掉，再如果promptContent下面有多个conText，进行对比，保留字符最多的conText (下面)
-    # processed_messages = []
-    # # 遍历 filtered_messages 列表
-    # for msg in filtered_messages:
-    #     # 去掉 cardStem 字段
-    #     msg.pop("cardStem", None)
-    #
-    #     # 获取 promptContent 字段
-    #     prompt_content = msg.get("promptContent", [])
-    #
-    #     # 去掉 promptContent 为空的项
-    #     if not prompt_content:
-    #         continue
-    #
-    #     # 如果 promptContent 下面有多个 conText，保留字符最多的 conText
-    #     max_length = -1
-    #     longest_con_text_item = None
-    #
-    #     for item in prompt_content:
-    #         con_text = item.get("conText", "")
-    #         if len(con_text) > max_length:
-    #             max_length = len(con_text)
-    #             longest_con_text_item = item
-    #
-    #     # 保留字符最多的 conText
-    #     msg["promptContent"] = [longest_con_text_item] if longest_con_text_item else []
-    #
-    #     # 添加处理后的消息到 processed_messages 列表
-    #     processed_messages.append(msg)
-    #
-    # print(len(processed_messages), end=" ")
-    # print(processed_messages)
+    # 未筛选的值，将cardStem的的字典格式化，然后将同级的conversationId插入将cardStem的的字典格式化中并返回新列表
+    processed_data = []
+    for conversation_card in conversation_card_list:  # 遍历合并后的 conversation_card_list
+        conversationIdTe = conversation_card['conversationId']
+        cardStemTe = conversation_card['cardStem']
+        cardStemTe_json = json.loads(cardStemTe)
+        cardStemTe_json['conversationId'] = conversationIdTe  # 将conversationId插入cardStem
+        processed_data.append(cardStemTe_json)  # 追加入新列表
 
-    # 提取所有 conText 到一个单独的列表
-    # con_texts = [item["conText"] for msg in processed_messages for item in msg["promptContent"]]
-    # print(len(con_texts), end=" ")
+    print(len(processed_data), end=" ")
+    print(processed_data)
+    # con_texts = [item["cardStem"] for item in processed_data if "cardStem" in item]
     # print(con_texts)
-
-    # 去重
-    # unique_data = list(set(con_texts))
-    # 输出结果
-    # print(len(unique_data), end=" ")
-    # print(unique_data)
-
-    # print(json.dumps(unique_data, indent=4, ensure_ascii=False))
-
-    # 处理数据：只保留 cardStem，去除 promptContent
-    processed_data = [{"cardStem": item["cardStem"]} for item in filtered_messages]
-    # processed_messages = json.dumps(processed_data, indent=4, ensure_ascii=False)
-    # print(len(processed_data), end=" ")
-    # print(processed_data)
-
-    # 提取 cardStem 数据并封装成列表
-    con_texts = [item["cardStem"] for item in processed_data if "cardStem" in item]
-    # print(len(con_texts), end=" ")
-    # print(con_texts)
-
     filtered_data = []
-    for iteam in con_texts:
+    for iteam in processed_data:
         try:
             # 解析 JSON 字符串
-            parsed_item = json.loads(iteam)
-            content = parsed_item.get("content", "")
+            # parsed_item = json.loads(iteam)
+            content = iteam.get("content", "")
 
             # 统计中文字符数量
             chinese_count = len(re.findall(r'[\u4e00-\u9fff]', content))
 
             # 如果中文字符数量小于 5，则保留
             if chinese_count > 5:
-                filtered_data.append(parsed_item)
+                filtered_data.append(iteam)
         except json.JSONDecodeError as e:
-            print_red(f"解析 JSON 时发生错误: {e}")
+            print(f"解析 JSON 时发生错误: {e}")
 
     print(len(filtered_data), end=" ")
     print(filtered_data)
 
     filtered_list = []
-    for ie1 in filtered_data:
+    for index, ie1 in enumerate(filtered_data):
         try:
             # 解析 JSON 字符串
-            # parsed_item = json.loads(ie1)
             content_ie1 = ie1.get("content", "")
-
+            content_dict = json.loads(content_ie1)
             # 检查 avatar_text 是否为 "有问题？向豆包提问"
             if "avatar_text" in content_ie1:
-                content_dict = json.loads(content_ie1)
                 if content_dict.get("avatar_text") == "有问题？向豆包提问":
                     continue  # 跳过该条目
 
             # 如果不满足条件，则保留该条目
-            filtered_list.append(content_ie1)
+            # 将conversationId合并到 content 中并将合并后的content插入新列表中
+            conversationIdTr = ie1['conversationId']
+            content_dict['conversationId'] = conversationIdTr
+            filtered_list.append(content_dict)
+
         except json.JSONDecodeError as e:
-            print_red(f"解析 JSON 时发生错误: {e}")
+            print(f"解析 JSON 时发生错误: {e}")
+
     print(len(filtered_list), end=" ")
     print(filtered_list)
 
@@ -737,7 +724,7 @@ if __name__ == '__main__':
 
     # mango_json()  # mango表转json
 
-    empty_mongo(bank=data_list)  # 清空data_list库
+    # empty_mongo(bank=data_list)  # 清空data_list库
 
 """
 第二代版本:在筛选的时候，将cardStem保留，去掉下级conText中的内容
