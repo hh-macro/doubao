@@ -87,7 +87,7 @@ def detection_coord(file_name, file_path, timu_file='atimu_all'):
     }
     data = json.dumps(data, separators=(',', ':'))
     response = requests.post(url, headers=headers, cookies=cookies, params=params, data=data)
-    print(response.json())
+    # print(response.json())
     QuestionBoxes = json.loads(response.text)['QuestionBoxes'][0]
     Pos_list = []
 

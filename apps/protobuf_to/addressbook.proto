@@ -19,6 +19,7 @@ message NestedMessage {
 }
 // 定义最深层的消息
 message DeepNestedMessage {
+  string conversation_id = 1;
   string cardStem = 8;
   repeated CoreNestedMessage promptContent = 9;
 }
