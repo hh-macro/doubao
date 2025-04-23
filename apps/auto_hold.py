@@ -265,6 +265,7 @@ def hold_folder(device_code='6c8f7fe3'):
     path = Path(directory_file)
     # 遍历目录及其所有子目录
     for item in path.rglob("*"):  # rglob("*") 递归所有
+        open("image_cache", "w").close()  # 清空缓存文件
         if item.is_file() and item.suffix.lower() == ".jpg":  # 只处理文件
             if imghdr.what(item) is None:  # 检测文件是否损坏
                 item.unlink()  # 删除文件
@@ -304,7 +305,7 @@ def hold_folder(device_code='6c8f7fe3'):
             d(text='重试').click_exists()
             if not d(resourceId='com.aitutor.hippo:id/aqr', text='1').exists(timeout=120):
                 print_red(f"网络请求异常\t---- {item.stem}\t 题目无法加载!!! 进行跳过")
-                d(resourceId='com.aitutor.hippo:id/amw').click(timeout=5)
+                d(resourceId='com.aitutor.hippo:id/amo').click(timeout=5)
                 continue
             try:
                 for io in range(1, 30):

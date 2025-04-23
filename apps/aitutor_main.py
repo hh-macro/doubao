@@ -403,7 +403,7 @@ def contains_chinese(s):
 def json_save_base64(filtered_list, key_cache):
     """ 将 unpack() 方法筛选成功的list存入 data_list表中"""
     jso1_list = [saw2 for saw2 in filtered_list]
-    # print('12123', len(jso1_list), jso1_list)
+    # print('jso1_list\t', len(jso1_list), jso1_list)
     # 向每个字典中添加一个新的键值对
     for item in jso1_list:
         item["image_name"] = key_cache
@@ -458,8 +458,8 @@ def unpack(base64_str, key_cache):
                 dn_message["promptContent"] = filtered_prompt_content
                 filtered_messages.append(dn_message)
 
-    # print(len(filtered_messages), end=" ")  # 此内容为未合并为转换的原始数据
-    # print(filtered_messages)
+    print(len(filtered_messages), end=" ")  # 此内容为未合并为转换的原始数据
+    print(filtered_messages)
     # 创建包含 conversationId 和 cardStem 的字典列表
     conversation_card_list = []
     for message in filtered_messages:
@@ -480,8 +480,8 @@ def unpack(base64_str, key_cache):
         cardStemTe_json['conversationId'] = conversationIdTe  # 将conversationId插入cardStem
         processed_data.append(cardStemTe_json)  # 追加入新列表
 
-    print(len(processed_data), end=" ")
-    print(processed_data)
+    # print(len(processed_data), end=" ")
+    # print(processed_data)
     # con_texts = [item["cardStem"] for item in processed_data if "cardStem" in item]
     # print(con_texts)
     filtered_data = []
@@ -510,6 +510,10 @@ def unpack(base64_str, key_cache):
             content_ie1 = ie1.get("content", "")
             content_dict = json.loads(content_ie1)
             # 检查 avatar_text 是否为 "有问题？向豆包提问"
+            if ie1['card_type'] == 20:
+                continue  # 跳过该条目  20 --> 有问题？向豆包提问
+
+            # 检查 avatar_text 是否为 "有问题？向豆包提问"(双重判断)
             if "avatar_text" in content_ie1:
                 if content_dict.get("avatar_text") == "有问题？向豆包提问":
                     continue  # 跳过该条目
@@ -642,7 +646,7 @@ class MongoDocProcessor:
 
         base_dir = os.path.join(self.base_output_dir, dt)
         # target_dir = os.path.join(base_dir, doc["image_name"])
-        oid = str(doc['_id'])
+        oid = str(doc['conversationId'])
         # print(oid)
         target_dir = os.path.join(base_dir, doc["image_name"], oid)
 
