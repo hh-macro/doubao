@@ -14,12 +14,13 @@ import time
 from pathlib import Path
 from datetime import datetime
 import requests
-from protobuf_to import GetByUserInit
 import pymongo
 from bson.json_util import dumps
 from bson import json_util
+from collections import defaultdict
 
 from com import detection_coord  #
+from protobuf_to import GetByUserInit
 
 client = pymongo.MongoClient("localhost", 27017)
 
@@ -255,80 +256,49 @@ def clear_json_file(file_path):
 
 # 对data_list'表中的内容进行去重操作
 def de_weigh_json():
-    # pipeline = [
-    #     {
-    #         "$group": {
-    #             "_id": "$stem",  # 按 stem 字段分组
-    #             "documents": {"$push": "$$ROOT"}  # 将组内的所有文档推入列表
-    #         }
-    #     },
-    #     {
-    #         "$addFields": {
-    #             "documents": {
-    #                 "$map": {
-    #                     "input": "$documents",
-    #                     "as": "doc",
-    #                     "in": {
-    #                         "doc": "$$doc",
-    #                         "field_count": {
-    #                             "$size": {
-    #                                 "$filter": {
-    #                                     "input": {
-    #                                         "$objectToArray": "$$doc"
-    #                                     },
-    #                                     "cond": {
-    #                                         "$in": ["$$this.k", ["stem", "answer", "analysis"]]
-    #                                     }
-    #                                 }
-    #                             }
-    #                         }
-    #                     }
-    #                 }
-    #             }
-    #         }
-    #     },
-    #     {
-    #         "$project": {
-    #             "documents": {
-    #                 "$sortArray": {
-    #                     "input": "$documents",
-    #                     "sortBy": {"field_count": -1}  # 按字段数量降序排序
-    #                 }
-    #             }
-    #         }
-    #     },
-    #     {
-    #         "$project": {
-    #             "firstDocument": {"$arrayElemAt": ["$documents.doc", 0]}  # 保留字段最多的文档
-    #         }
-    #     },
-    #     {
-    #         "$replaceRoot": {"newRoot": "$firstDocument"}  # 恢复文档的原始结构
-    #     }
-    # ]
     pipeline = [
         {
             "$project": {
-                # 创建一个用于分组的字段
+                # 定义分组键：优先按 stem 内容分组，次之按 analysis，最后按 answer
                 "group_key": {
                     "$cond": [
-                        {"$ne": ["$stem", None]},  # 如果 stem 存在
-                        "$stem",
-                        {
-                            "$cond": [
-                                {"$ne": ["$analysis", None]},  # 如果 analysis 存在
-                                "$analysis",
-                                "$answer"  # 否则使用 answer
-                            ]
-                        }
+                        # 第一层条件：stem 存在且内容非空
+                        {"$and": [
+                            {"$ne": ["$stem", None]},
+                            {"$ne": ["$stem", ""]},
+                            {"$ifNull": ["$stem", False]}  # 确保字段存在
+                        ]},
+                        {"type": "stem", "value": "$stem"},  # 标记为 stem 类型
+
+                        # 第二层条件（嵌套）：analysis 存在且内容非空（且 stem 不存在）
+                        {"$cond": [
+                            {"$and": [
+                                {"$ne": ["$analysis", None]},
+                                {"$ne": ["$analysis", ""]},
+                                {"$ifNull": ["$analysis", False]}
+                            ]},
+                            {"type": "analysis", "value": "$analysis"},  # 标记为 analysis 类型
+
+                            # 默认分支：使用 answer（且前两者都不存在）
+                            {"type": "answer", "value": "$answer"}
+                        ]}
                     ]
-                }
+                },
+                # 保留所有必要字段
+                "stem": 1,
+                "answer": 1,
+                "analysis": 1,
+                "stem_title": 1,
+                "answer_title": 1,
+                "analysis_title": 1,
+                "conversationId": 1,
+                "image_name": 1
             }
         },
         {
             "$group": {
-                "_id": "$group_key",  # 按 group_key 分组
-                "documents": {"$push": "$$ROOT"}  # 将组内的所有文档推入列表
+                "_id": "$group_key",  # 按复合键分组（类型+值）
+                "documents": {"$push": "$$ROOT"}
             }
         },
         {
@@ -339,15 +309,21 @@ def de_weigh_json():
                         "as": "doc",
                         "in": {
                             "doc": "$$doc",
-                            "field_count": {
-                                "$size": {
-                                    "$filter": {
-                                        "input": {"$objectToArray": "$$doc"},
-                                        "cond": {
-                                            "$in": ["$$this.k", ["stem", "answer", "analysis"]]
-                                        }
-                                    }
-                                }
+                            # 计算字段完整性得分（包含标题字段）
+                            "field_score": {
+                                "$add": [
+                                    {"$cond": [{"$and": [{"$ne": ["$$doc.stem", None]}, {"$ne": ["$$doc.stem", ""]}]},
+                                               2, 0]},  # stem 权重更高
+                                    {"$cond": [
+                                        {"$and": [{"$ne": ["$$doc.analysis", None]}, {"$ne": ["$$doc.analysis", ""]}]},
+                                        1, 0]},
+                                    {"$cond": [
+                                        {"$and": [{"$ne": ["$$doc.answer", None]}, {"$ne": ["$$doc.answer", ""]}]}, 1,
+                                        0]},
+                                    {"$cond": [{"$ne": ["$$doc.stem_title", None]}, 1, 0]},  # 标题字段加分
+                                    {"$cond": [{"$ne": ["$$doc.answer_title", None]}, 1, 0]},
+                                    {"$cond": [{"$ne": ["$$doc.analysis_title", None]}, 1, 0]}
+                                ]
                             }
                         }
                     }
@@ -359,29 +335,26 @@ def de_weigh_json():
                 "documents": {
                     "$sortArray": {
                         "input": "$documents",
-                        "sortBy": {"field_count": -1}  # 按字段数量降序排序
+                        "sortBy": {"field_score": -1}  # 按得分降序排序
                     }
                 }
             }
         },
         {
-            "$project": {
-                "firstDocument": {"$arrayElemAt": ["$documents.doc", 0]}  # 保留字段最多的文档
+            "$replaceRoot": {
+                "newRoot": {"$arrayElemAt": ["$documents.doc", 0]}  # 保留得分最高的文档
             }
-        },
-        {
-            "$replaceRoot": {"newRoot": "$firstDocument"}  # 恢复文档的原始结构
         }
     ]
-    unique_documents = list(collection.aggregate(pipeline))
+    unique_documents = list(data_list.aggregate(pipeline))
 
     # 提取唯一文档的 _id 列表
     unique_ids = [doc["_id"] for doc in unique_documents]
 
     # 删除集合中不在唯一列表中的文档
-    original_count = collection.count_documents({})
-    result = collection.delete_many({"_id": {"$nin": unique_ids}})
-    deduplicated_count = collection.count_documents({})
+    original_count = data_list.count_documents({})
+    result = data_list.delete_many({"_id": {"$nin": unique_ids}})
+    deduplicated_count = data_list.count_documents({})
 
     # 打印去重结果
     print(f"原始集合文档数量: {original_count}")
@@ -536,48 +509,9 @@ def unpack(base64_str, key_cache):
 def deduplicate_mongo_data():
     """按stem字段去重，优先保留有answer且内容更长的文档，其次考虑analysis，最后保留更早的文档"""
 
-    # 聚合管道：添加辅助字段并按优先级排序后分组取第一条
     pipeline = [
-        # 添加辅助字段用于排序
-        {"$addFields": {
-            "hasAnswer": {
-                "$cond": {
-                    "if": {"$gt": [{"$strLenCP": {"$ifNull": ["$answer", ""]}}, 0]},
-                    "then": 1,
-                    "else": 0
-                }
-            },
-            "answerLength": {"$strLenCP": {"$ifNull": ["$answer", ""]}},
-            "hasAnalysis": {
-                "$cond": {
-                    "if": {"$gt": [{"$strLenCP": {"$ifNull": ["$analysis", ""]}}, 0]},
-                    "then": 1,
-                    "else": 0
-                }
-            },
-            "analysisLength": {"$strLenCP": {"$ifNull": ["$analysis", ""]}}
-        }},
-        # 按多条件排序（优先级：有answer > answer长度 > 有analysis > analysis长度 > 创建时间）
-        {"$sort": {
-            "hasAnswer": -1,
-            "answerLength": -1,
-            "hasAnalysis": -1,
-            "analysisLength": -1,
-            "_id": 1  # 确保_id小的（先创建的）优先
-        }},
-        # 按stem分组取第一条
-        {"$group": {
-            "_id": "$stem",
-            "doc": {"$first": "$$ROOT"}
-        }},
-        # 展开为文档根结构
-        {"$replaceRoot": {"newRoot": "$doc"}},
-        # 移除临时字段和无用字段
+        # 移除无用字段
         {"$project": {
-            "hasAnswer": 0,
-            "answerLength": 0,
-            "hasAnalysis": 0,
-            "analysisLength": 0,
             "answer_title": 0,
             "stem_title": 0,
             "analysis_title": 0,
@@ -590,14 +524,14 @@ def deduplicate_mongo_data():
     ]
 
     # 执行聚合
-    deduplicated_data = list(data_list.aggregate(pipeline))
+    updated_data = list(data_list.aggregate(pipeline))
 
-    # 清空原集合并插入去重数据
+    # 清空原集合并插入更新后的数据
     data_list.delete_many({})
-    if deduplicated_data:
-        data_list.insert_many(deduplicated_data)
+    if updated_data:
+        data_list.insert_many(updated_data)
 
-    print(f"去重完成，共保留 {len(deduplicated_data)} 条记录")
+    print(f"字段清理完成，共保留 {len(updated_data)} 条记录")
 
 
 def copy_collection_with_timestamp(data_total='data_total'):
@@ -624,6 +558,31 @@ def copy_collection_with_timestamp(data_total='data_total'):
             print("源集合中没有数据。")
     except Exception as e:
         print(print(f"批量写入时发生错误: {e}"))
+
+
+def load_search_data():
+    """ 读取search_message_list.json并构建映射关系"""
+    image_conv_map = defaultdict(set)
+    with open('search_message_list.json', 'r', encoding='utf-8') as f:
+        search_list = json.load(f)
+    for item in search_list:
+        image_name = item['image_name']
+        conv_id = str(item['conversation_id'])  # 转换为字符串类型
+        image_conv_map[image_name].add(conv_id)
+    return image_conv_map
+
+
+def clean_mongo_data(image_conv_map):
+    """  根据创建好的映射关系image_conv_map 来清理 mango不符合条件的数据"""
+    for image_name, allowed_ids in image_conv_map.items():
+        # 构造查询条件：匹配当前image_name且conversationId不在允许的列表中的文档
+        query = {
+            'image_name': image_name,
+            'conversationId': {'$nin': list(allowed_ids)}
+        }
+        result = data_list.delete_many(query)
+        print(f"Image: {image_name} - 已删除 {result.deleted_count} 个无效文档")
+    print('-' * 51)
 
 
 class MongoDocProcessor:
@@ -707,11 +666,13 @@ class MongoDocProcessor:
 if __name__ == '__main__':
     # unpack(base64_str)  # 单个测试
 
-    # create_parent_and_children()  # 检查父文件夹是否存在，如果不存在则创建父文件夹和所有子文件夹。
+    # create_parent_and_children()  # 检查父文件夹是否存在，如果不存在则创建父文件夹和所有子文件夹。 | 弃用
 
     the_frist()  # 对base64_strings.json 文件里面的base64编码进行去重操作
 
     circulate()  # man
+
+    clean_mongo_data(load_search_data())  # 根据的映射关系来清理 mango 不符合条件的数据
 
     de_weigh_json()  # 对 data_list 表中的内容进行去重操作
 
@@ -719,14 +680,14 @@ if __name__ == '__main__':
 
     deduplicate_mongo_data()  # 按stem字段去重，保留最早出现的文档并去掉无用字段
 
-    copy_collection_with_timestamp()  # 原集合data_list复制到新集合并添加时间字段 data_total为目标总集合
+    # copy_collection_with_timestamp()  # 原集合data_list复制到新集合并添加时间字段 data_total为目标总集合
 
-    processor = MongoDocProcessor()
-    processor.process_documents(data_list)  # 将指定mongo库 保存到本地, 并按指定格式存放
+    # processor = MongoDocProcessor()
+    # processor.process_documents(data_list)  # 将指定mongo库 保存到本地, 并按指定格式存放
 
-    # re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址
+    # re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址  | 弃用
 
-    # mango_json()  # mango表转json
+    # mango_json()  # mango表转json | 弃用
 
     # empty_mongo(bank=data_list)  # 清空data_list库
 
