@@ -507,7 +507,7 @@ def unpack(base64_str, key_cache):
 
 
 def deduplicate_mongo_data():
-    """按stem字段去重，优先保留有answer且内容更长的文档，其次考虑analysis，最后保留更早的文档"""
+    """只移除无用字段"""
 
     pipeline = [
         # 移除无用字段
@@ -530,8 +530,7 @@ def deduplicate_mongo_data():
     data_list.delete_many({})
     if updated_data:
         data_list.insert_many(updated_data)
-
-    print(f"字段清理完成，共保留 {len(updated_data)} 条记录")
+    # print(f"字段清理完成，共保留 {len(updated_data)} 条记录")
 
 
 def copy_collection_with_timestamp(data_total='data_total'):
@@ -594,7 +593,11 @@ class MongoDocProcessor:
     def copy_image(self, source_path, destination_path):
         # 将一张图片从一个文件夹复制到另一个文件夹
         shutil.copy2(source_path, destination_path)
-
+    def _read_search_file(self):
+        # 加载 JSON 数据
+        with open('search_message_list.json', 'r', encoding='utf-8') as f:
+            json_data = json.load(f)
+        return json_data
     def _parse_timestamp(self):
         """生成当天日期 ---> 2025-4-18 """
         return datetime.now().strftime("%Y-%m-%d")
@@ -638,6 +641,33 @@ class MongoDocProcessor:
             print(source_image)
             self.copy_image(destination_folder, source_image)
 
+    def pox_file_structure(self):
+        # 预处理JSON数据，构建查找字典
+        pos_dict = {}
+        for item in self._read_search_file():
+            image_name = item['image_name']
+            conversation_id = str(item['conversation_id'])  # 转换为字符串以匹配Mongo中的类型
+            key = (image_name, conversation_id)
+            pos_dict[key] = item['pos']
+
+        for doc in data_list.find():
+            # 提取image_name和conversationId
+            image_name = doc['image_name']
+            conversation_id = str(doc['conversationId'])  # 确保转换为字符串
+
+            # 查找对应的pos
+            key = (image_name, conversation_id)
+            pos = pos_dict.get(key)
+
+            if pos:
+                # 构建文件路径
+                base_path = rf'D:/aresult/{self._parse_timestamp()}'
+                dir_path = os.path.join(base_path, image_name, conversation_id)
+                file_path = os.path.join(dir_path, 'pox.txt')
+                with open(file_path, 'w') as f:
+                    f.write(json.dumps(pos))
+            else:
+                print_red(f"没有找到与image_name匹配的pos: {image_name},\t conversationId: {conversation_id}")
     def process_documents(self, data_list):
         """处理文档主方法"""
         cursor = data_list.find({})  # 查找并将data_list库内容转换为JSON格式
@@ -678,12 +708,12 @@ if __name__ == '__main__':
 
     # clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
 
-    deduplicate_mongo_data()  # 按stem字段去重，保留最早出现的文档并去掉无用字段
+    deduplicate_mongo_data()  # 去掉无用字段
 
-    # copy_collection_with_timestamp()  # 原集合data_list复制到新集合并添加时间字段 data_total为目标总集合
+    copy_collection_with_timestamp()  # 原集合data_list复制到新集合并添加时间字段 data_total为目标总集合
 
-    # processor = MongoDocProcessor()
-    # processor.process_documents(data_list)  # 将指定mongo库 保存到本地, 并按指定格式存放
+    processor = MongoDocProcessor()
+    processor.process_documents(data_list)  # 将指定mongo库 保存到本地, 并按指定格式存放
 
     # re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址  | 弃用
 
