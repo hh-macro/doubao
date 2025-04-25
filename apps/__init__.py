@@ -27,13 +27,14 @@ client = pymongo.MongoClient(CONF['mongodb']['url'])
 db = client[CONF['mongodb']['db']]
 data_list = db[CONF['mongodb']['default']]  # 操作集合
 
-data_total = db['data_total']  # 总集合
+data_total = db[CONF['mongodb']['data_total']]  # 操作集合
 
 device_id = socket.gethostname()  # 当前设备ID
 
 # ================================= 日志 =====================================
 log_dir = Path(project_rootpath)
 log_dir.mkdir(parents=True, exist_ok=True)
+
 # 清除默认配置
 logger.remove()
 

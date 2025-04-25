@@ -8,9 +8,9 @@ mongodb:
   url: mongodb://localhost:27017/
   db: doubao
   default: data_list
-
+  data_total: data_total
 # ===================================== 处理配置 ========================================
 processor:
-  source_file: D:\aresult
-  source_file_all:  D:\atimu
+  source_file: D:\atimu
+  source_file_all:  D:\atimu_all
   result: D:\aresult

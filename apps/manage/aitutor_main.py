@@ -5,6 +5,7 @@
 # @LastModified: 2025/4/25
 # Copyright (c) 2025 by 胡H, All Rights Reserved.
 # @desc:
+
 import base64
 import json
 import os
@@ -18,7 +19,10 @@ from bson.json_util import dumps
 from bson import json_util
 from collections import defaultdict
 
-from apps import CONF, data_list, detection_coord, GetByUserInit, data_total, db
+from apps import CONF, data_list, detection_coord, GetByUserInit, data_total, db, logger
+
+aresult = CONF['processor']['result']
+source_file_all = CONF['processor']['source_file_all']
 
 
 # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址
@@ -39,16 +43,17 @@ def re_mango():
             # print('rout_img:\t', rout_img)
             image_content = requests.get(rout_img).content
             png_name = int(time.time() * 1000000)
-            with open(rf'D:/aresult/{datee_name}/{image_name}/{conversationId}/images/{png_name}.png', 'wb') as f:
+            with open(rf'{aresult}/{datee_name}/{image_name}/{conversationId}/images/{png_name}.png', 'wb') as f:
                 f.write(image_content)
             # print(f'{rout_img} ----保存成功')
 
             if pattern_type == 2:
-                return rf"<img src='/aresult/{datee_name}/{image_name}/{conversationId}/images/{png_name}.png' />"
-            return rf"/aresult/{datee_name}/{image_name}/{conversationId}/images/{png_name}.png"
+                return rf"<img src='/{aresult}/{datee_name}/{image_name}/{conversationId}/images/{png_name}.png' />"
+            return rf"/{aresult}/{datee_name}/{image_name}/{conversationId}/images/{png_name}.png"
         except Exception as e:
-            print_red(f"{e}-----------------图片下载发送异常--返回原值")
+            logger.error(f"{e}-----------------图片下载发送异常--返回原值")
 
+    print('开始匹配图片地址......')
     # 遍历集合中的文档
     for document in data_list.find():
         try:
@@ -68,7 +73,6 @@ def re_mango():
             new_text = rich_text_str
             new_answer = answer_text_str
             new_analysis = analysis_text_str
-
             # 处理analysis字段
             if analysis_text is not None:
                 if pattern2.search(analysis_text_str):
@@ -79,8 +83,8 @@ def re_mango():
                     print("-匹配到第一种格式的 URL (analysis)，进行替换")
                     new_analysis = pattern1.sub(lambda m: dynamic_replacement(m, 1, conversationId, image_name),
                                                 analysis_text_str)
-                else:
-                    print("-未匹配到任何 URL (analysis)，跳过替换")
+                # else:
+                #     print("-未匹配到任何 URL (analysis)，跳过替换")
 
             # 处理answer字段
             if answer_text is not None:
@@ -92,8 +96,8 @@ def re_mango():
                     print("-匹配到第一种格式的 URL (answer)，进行替换")
                     new_answer = pattern1.sub(lambda m: dynamic_replacement(m, 1, conversationId, image_name),
                                               answer_text_str)
-                else:
-                    print("-未匹配到任何 URL (answer)，跳过替换")
+                # else:
+                #     print("-未匹配到任何 URL (answer)，跳过替换")
 
             # 处理stem字段
             if rich_text is not None:
@@ -105,8 +109,8 @@ def re_mango():
                     print("-匹配到第一种格式的 URL (stem)，进行替换")
                     new_text = pattern1.sub(lambda m: dynamic_replacement(m, 1, conversationId, image_name),
                                             rich_text_str)
-                else:
-                    print("-未匹配到任何 URL (stem)，跳过替换")
+                # else:
+                #     print("-未匹配到任何 URL (stem)，跳过替换")
 
             # 更新MongoDB文档
             update_data = {}
@@ -123,12 +127,12 @@ def re_mango():
                     {"$set": update_data}
                 )
                 print(f"文档已更新：{update_data.keys()}")
-            else:
-                print("文档未更改")
+                # print("-" * 40)
+            # else:
+            #     print("文档未更改")
 
-            print("-" * 40)
         except Exception as e:
-            print_red(f"处理文档时发生异常: {e}")
+            logger.error(f"处理文档时发生异常: {e}")
             continue
 
         # print("原文本:")
@@ -168,9 +172,9 @@ def re_mango():
             # else:
             #     print("文档未更改")
 
-            print("-" * 40)
+            # print("-" * 40)
         except Exception as e:
-            print_red(f"更新 MongoDB 文档时发生异常：{e}")
+            logger.error(f"更新 MongoDB 文档时发生异常：{e}")
 
 
 def empty_mongo(bank):
@@ -197,8 +201,7 @@ def time_date():
 def create_parent_and_children():
     """  检查父文件夹是否存在，如果不存在则创建父文件夹和所有子文件夹。"""
     datee_name = time_date()
-    parent_folder = rf"D:/aresult/{datee_name}"
-    # child_folders = ["images", "timu"]
+    parent_folder = rf"{aresult}/{datee_name}"
     parent_path = Path(parent_folder)
 
     # 检查父文件夹是否存在，如果不存在则创建
@@ -239,10 +242,11 @@ def the_frist():
             json.dump(unique_base64_list, file, ensure_ascii=False, indent=4)
 
         print(f"对 {file_path} 去重结果已经重新覆盖保存")
+        print('-' * 51)
     except FileNotFoundError:
-        print_red(f"文件 {file_path} 不存在！")
+        logger.error(f"文件 {file_path} 不存在！")
     except json.JSONDecodeError:
-        print_red(f"文件 {file_path} 内容为空或格式错误！")
+        logger.error(f"文件 {file_path} 内容为空或格式错误！")
 
 
 # 读取 base64_strings.json 中的内容、遍历、筛选出字符超过10000的、调用 unpack() 方法
@@ -254,10 +258,10 @@ def circulate():
         with open(file_path, "r", encoding="utf-8") as file:
             base64_list = json.load(file)  # 加载 Base64 字符串列表（列表中套字典）
     except FileNotFoundError:
-        print_red(f"文件 {file_path} 不存在/位置错误！")
+        logger.error(f"文件 {file_path} 不存在/位置错误！")
         base64_list = []
     except json.JSONDecodeError:
-        print_red(f"JSON 解析错误: 大概率是 {file_path} 内容为空")
+        logger.error(f"JSON 解析错误: 大概率是 {file_path} 内容为空")
         base64_list = []
 
     # 遍历列表中的每个字典
@@ -408,7 +412,7 @@ def json_save_base64(filtered_list, key_cache):
         result_dict = data_list.insert_many(jso1_list)
     except TypeError as e:
         print_red(jso1_list)
-        print_red(f"数据转换或插入 MongoDB 表时发生了 Type Error: {e}")
+        logger.error(f"数据转换或插入 MongoDB 表时发生了 Type Error: {e}")
         return
     print(f"已成功向 data_list 表中插入 {len(result_dict.inserted_ids)} 条数据。")
 
@@ -420,11 +424,11 @@ def mango_json():
     datee_name = time_date()  # 当前时间
     try:
         # 将文档导出为 JSON 文件
-        with open(f"D:/aresult/{datee_name}/data_list.json", "w", encoding="utf-8") as outfile:
+        with open(f"{aresult}/{datee_name}/data_list.json", "w", encoding="utf-8") as outfile:
             outfile.write(dumps(documents, ensure_ascii=False))
         print("data_list.json导出成功")
     except Exception as e:
-        print_red(f"数据转换或导出 JSON 表时发生了 Exception: {e}")
+        logger.error(f"数据转换或导出 JSON 表时发生了 Exception: {e}")
 
 
 # 核心方法unpack() 对读取的 base64码  进行转换识别操作，再通过层层筛选，得到所需josn结果
@@ -454,8 +458,9 @@ def unpack(base64_str, key_cache):
                 dn_message["promptContent"] = filtered_prompt_content
                 filtered_messages.append(dn_message)
 
-    print(len(filtered_messages), end=" ")  # 此内容为未合并为转换的原始数据
-    print(filtered_messages)
+    print('unpack() 第一次处理后数量:', len(filtered_messages), end=" |\t")  # 此内容为未合并为转换的原始数据
+    # print(filtered_messages)  # 调试时启用 | 打印信息列表
+
     # 创建包含 conversationId 和 cardStem 的字典列表
     conversation_card_list = []
     for message in filtered_messages:
@@ -494,10 +499,10 @@ def unpack(base64_str, key_cache):
             if chinese_count > 5:
                 filtered_data.append(iteam)
         except json.JSONDecodeError as e:
-            print(f"解析 JSON 时发生错误: {e}")
+            logger.error(f"解析 JSON 时发生错误: {e}")
 
-    print(len(filtered_data), end=" ")
-    print(filtered_data)
+    print('unpack() 第二次处理后数量', len(filtered_data), end=" |\t")
+    # print(filtered_data)  # 调试时启用 | 打印信息列表
 
     filtered_list = []
     for index, ie1 in enumerate(filtered_data):
@@ -521,10 +526,10 @@ def unpack(base64_str, key_cache):
             filtered_list.append(content_dict)
 
         except json.JSONDecodeError as e:
-            print(f"解析 JSON 时发生错误: {e}")
+            logger.error(f"解析 JSON 时发生错误: {e}")
 
-    print(len(filtered_list), end=" ")
-    print(filtered_list)
+    print('unpack() 第三次处理后数量', len(filtered_list), end="\n")
+    # print(filtered_list)  # 调试时启用 | 打印信息列表
 
     json_save_base64(filtered_list, key_cache)  # 存入 data_list 表中
 
@@ -573,13 +578,14 @@ def copy_collection_with_timestamp():
     # 插入到目标集合
     try:
         if copied_documents:
-            db[data_total].insert_many(copied_documents)
-            print(f"已成功将`data_list`复制 {len(copied_documents)} 出总集合中")
+
+            db['data_total'].insert_many(copied_documents)
+            print(f"已成功将`data_list`复制 {len(copied_documents)}个数据进入 总集合中")
             print('-' * 40)
         else:
-            print("源集合中没有数据。")
+            print_red("源集合中没有数据。")
     except Exception as e:
-        print(print(f"批量写入时发生错误: {e}"))
+        logger.error(f"批量写入时发生错误(大概率为值已存在):\t{e}")
 
 
 def load_search_data():
@@ -610,7 +616,7 @@ def clean_mongo_data(image_conv_map):
 class MongoDocProcessor:
     """ 将指定mongo库 保存到本地, 并按指定格式存放"""
 
-    def __init__(self, base_output_dir="D:\\aresult"):
+    def __init__(self, base_output_dir=aresult):
         self.base_output_dir = base_output_dir
 
     def copy_image(self, source_path, destination_path):
@@ -642,6 +648,7 @@ class MongoDocProcessor:
         return target_dir, filename, oid
 
     def coordinate(self):
+        """ 发起请求, 保存总坐标 | 将题目图片 保存对应题目文件夹中"""
         image_cursor = data_list.find({"image_name": {"$exists": True}}, {"image_name": 1, "_id": 0})
         unique_image_names = set()
         # 遍历查询结果并添加到集合中
@@ -658,15 +665,16 @@ class MongoDocProcessor:
             file_name_base = os.path.basename(target_dir_new)
             file_path_dir = os.path.dirname(target_dir_new)
             print('-' * 40)
-            detection_coord(file_name_base, target_dir_new)  #
+            detection_coord(file_name_base, target_dir_new)  # 发起请求, 保存总坐标 注：只开发环境使用
 
-            destination_folder = rf"D:\atimu_all\{file_name_base}.jpg"
-            source_image = rf'D:\aresult\{self._parse_timestamp()}\{file_name_base}\{file_name_base}.jpg'
+            destination_folder = rf"{source_file_all}\{file_name_base}.jpg"
+            source_image = rf'{aresult}\{self._parse_timestamp()}\{file_name_base}\{file_name_base}.jpg'
             print(destination_folder)
             print(source_image)
             self.copy_image(destination_folder, source_image)
 
     def pox_file_structure(self):
+        """  保存坐标到本地"""
         # 预处理JSON数据，构建查找字典
         pos_dict = {}
         for item in self._read_search_file():
@@ -686,7 +694,7 @@ class MongoDocProcessor:
 
             if pos:
                 # 构建文件路径
-                base_path = rf'D:/aresult/{self._parse_timestamp()}'
+                base_path = rf'{aresult}/{self._parse_timestamp()}'
                 dir_path = os.path.join(base_path, image_name, conversation_id)
                 file_path = os.path.join(dir_path, 'pox.txt')
                 with open(file_path, 'w') as f:
@@ -694,13 +702,51 @@ class MongoDocProcessor:
             else:
                 print_red(f"没有找到与image_name匹配的pos: {image_name},\t conversationId: {conversation_id}")
 
+    def screen_local_file(self):
+        """  构建数据结构并清理文件夹 | 去除不在坐标请求对应中的子题目 """
+        raw_data = self._read_search_file()
+
+        # 构建目标数据结构
+        image_mapping = {}
+        for item in raw_data:
+            img_name = item.get("image_name")
+            conv_id = str(item.get("conversation_id"))  # 统一转为字符串
+
+            if not img_name or not conv_id:
+                continue
+            if img_name not in image_mapping:
+                image_mapping[img_name] = []
+            image_mapping[img_name].append(conv_id)
+
+        # print(image_mapping)  # {'': [], '': [],...}
+        dt = self._parse_timestamp()
+        base_path = rf"{aresult}\{dt}"
+        for img_name, valid_ids in image_mapping.items():
+            target_dir = os.path.join(base_path, img_name)
+
+            if not os.path.exists(target_dir):  # 跳过不存在的目录
+                logger.debug(f"⚠️ 目录不存在: {target_dir}")
+                continue
+            # 遍历子文件夹
+            for folder in os.listdir(target_dir):
+                folder_path = os.path.join(target_dir, folder)
+
+                if not os.path.isdir(folder_path):
+                    continue  # 跳过文件
+                # 删除不在白名单的文件夹
+                if folder not in valid_ids:
+                    try:
+                        shutil.rmtree(folder_path)
+                    except Exception as e:
+                        logger.error(f"❌ 删除失败:{folder_path} ({str(e)})")
+        logger.info('已成功将本地数据结果筛选完毕')
+
     def process_documents(self, data_list):
         """处理文档主方法"""
         cursor = data_list.find({})  # 查找并将data_list库内容转换为JSON格式
         documents = json_util.loads(json_util.dumps(cursor))
-
-        for doc in documents:
-            try:
+        try:
+            for doc in documents:
                 target_dir, filename, oid = self._get_output_paths(doc)
                 os.makedirs(target_dir, exist_ok=True)
 
@@ -712,10 +758,11 @@ class MongoDocProcessor:
                 with open(file_path, 'w', encoding='utf-8') as f:
                     json_str = json_util.dumps(doc, ensure_ascii=False, indent=2)
                     f.write(json_str)
-                print(f'文档 {oid}\t已成功保存到本地\t{file_path}')
-            except Exception as e:
-                print(f"处理文档 {doc.get('_id', '')} 失败: {str(e)}")
-
+                # print(f'文档 {oid}\t已成功保存到本地\t{file_path}')
+                # logger.error(f"处理文档 {doc.get('_id', '')} 失败: {str(e)}")
+        except Exception as e:
+            logger.error(f"处理文档 {documents} 失败:\t {str(e)}")
+        print(f'data_list 库中所有内容已成功转化到本地 json')
         self.coordinate()
 
 
@@ -723,6 +770,7 @@ if __name__ == '__main__':
     # unpack(base64_str)  # 单个测试
 
     # create_parent_and_children()  # 检查父文件夹是否存在，如果不存在则创建父文件夹和所有子文件夹。 | 弃用
+    logger.info("aitutor 程序启动")
 
     the_frist()  # 对base64_strings.json 文件里面的base64编码进行去重操作
 
@@ -737,16 +785,17 @@ if __name__ == '__main__':
     copy_collection_with_timestamp()  # 原集合data_list复制到新集合并添加时间字段 data_total为目标总集合
 
     processor = MongoDocProcessor()
-    processor.process_documents(data_list)  # 将指定mongo库 保存到本地, 并按指定格式存放
+    processor.process_documents(data_list)  # 将指定mongo库 保存到本地, 并按指定格式存放 | 保存每个题目的对应坐标  |将题目图片 保存对应题目文件夹中|  清洗不在坐标中的题目  |
 
     re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址
 
     # mango_json()  # mango表转json | 弃用
 
-    empty_mongo(bank=data_list)  # 清空指定集合中的所有文档
+    # empty_mongo(bank=data_list)  # 清空指定集合中的所有文档
 
     # clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
 
+    logger.success("所有数据已全部处理完成")
 """
 第二代版本:在筛选的时候，将cardStem保留，去掉下级conText中的内容
         与第一版区别: 题目内容较为清晰, 且题目与AI解答所有页面全在一起
