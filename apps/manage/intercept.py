@@ -59,7 +59,7 @@ def response(flow: http.HTTPFlow) -> None:
                     })
                 with open('search_message_list.json', 'w') as f:
                     json.dump(search_list, f, indent=4)
-                print(f"search_message_list 列表已成功保存......")
+                print(f"search_message_list 列表已成功w保存......")
             else:
                 print("截取到search_message_list 列表, 但程序并未运行---为错误包")
         except Exception as e:
