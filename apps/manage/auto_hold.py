@@ -294,7 +294,7 @@ def hold_folder(device_code='6c8f7fe3'):
             except Exception as e:
                 print_red(f"图片加载异常，将重新搜索题目 : {e}")
                 time.sleep(2)
-                d(resourceId='com.aitutor.hippo:id/amw').click_exists(timeout=10)
+                d(resourceId='com.aitutor.hippo:id/amo').click_exists(timeout=10)
                 d(text='再拍一页').click_exists(timeout=2)
 
                 d(resourceId='com.aitutor.hippo:id/na').click(timeout=5)
@@ -306,6 +306,9 @@ def hold_folder(device_code='6c8f7fe3'):
             #     print_red(f"网络请求异常\t---- {item.stem}\t 题目无法加载!!! 进行跳过")
             #     d(resourceId='com.aitutor.hippo:id/amo').click(timeout=5)
             #     continue
+
+            if d(text='识别错误 ').click_exists(timeout=4):
+                d(resourceId='com.aitutor.hippo:id/fl').click(timeout=4)
 
             # 重试实现
             max_retries = 10  # 最大重试次数
@@ -343,7 +346,7 @@ def hold_folder(device_code='6c8f7fe3'):
                     aog_page = d(resourceId='com.aitutor.hippo:id/aqr', text=f'{io}').click_exists()
                     if not aog_page:
                         print(f'页面题目结果一共{io - 1}道题目')
-                        time.sleep(8)
+                        time.sleep(15)
                         destination_path = r'D:\atimu_all'
                         shutil.copy2(item, destination_path)
                         os.remove(item)  # 删除当前图片

@@ -2,7 +2,7 @@
 # @Author: 胡H
 # @File: aitutor_main.py
 # @Created: 2025/1/21 11:08
-# @LastModified: 2025/4/18
+# @LastModified: 2025/4/25
 # Copyright (c) 2025 by 胡H, All Rights Reserved.
 # @desc:
 import base64
@@ -14,19 +14,11 @@ import time
 from pathlib import Path
 from datetime import datetime
 import requests
-import pymongo
 from bson.json_util import dumps
 from bson import json_util
 from collections import defaultdict
 
-from apps.com import detection_coord  #
-from apps.protobuf_to import GetByUserInit
-
-client = pymongo.MongoClient("localhost", 27017)
-
-db = client['doubao']
-collection = db['data_list']
-data_list: collection = db.data_list
+from apps import CONF, data_list, detection_coord, GetByUserInit, data_total, db
 
 
 # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址
@@ -67,48 +59,76 @@ def re_mango():
             conversationId = document.get('conversationId')  # 确保提取conversationId字段内容
             image_name = document.get('image_name')  # 确保提取analysis字段内容
             # print('rich_text:\t', rich_text)
-            if analysis_text:  # analysis
-                analysis_text_str = json.dumps(analysis_text, ensure_ascii=False)
+
+            # 初始化原始字符串和替换后的变量
+            rich_text_str = json.dumps(rich_text, ensure_ascii=False) if rich_text is not None else None
+            answer_text_str = json.dumps(answer_text, ensure_ascii=False) if answer_text is not None else None
+            analysis_text_str = json.dumps(analysis_text, ensure_ascii=False) if analysis_text is not None else None
+
+            new_text = rich_text_str
+            new_answer = answer_text_str
+            new_analysis = analysis_text_str
+
+            # 处理analysis字段
+            if analysis_text is not None:
                 if pattern2.search(analysis_text_str):
                     print("-匹配到第二种格式的 URL (analysis)，进行替换")
                     new_analysis = pattern2.sub(lambda m: dynamic_replacement(m, 2, conversationId, image_name),
                                                 analysis_text_str)
+                elif pattern1.search(analysis_text_str):
+                    print("-匹配到第一种格式的 URL (analysis)，进行替换")
+                    new_analysis = pattern1.sub(lambda m: dynamic_replacement(m, 1, conversationId, image_name),
+                                                analysis_text_str)
                 else:
-                    if pattern1.search(analysis_text_str):
-                        print("-匹配到第一种格式的 URL (analysis)，进行替换")
-                        new_analysis = pattern1.sub(lambda m: dynamic_replacement(m, 1, conversationId, image_name),
-                                                    analysis_text_str)
-                    else:
-                        print("-未匹配到任何 URL (analysis)，跳过替换")
-                        new_analysis = analysis_text_str
+                    print("-未匹配到任何 URL (analysis)，跳过替换")
 
-            if answer_text:  # answer
-                answer_text_str = json.dumps(answer_text, ensure_ascii=False)
+            # 处理answer字段
+            if answer_text is not None:
                 if pattern2.search(answer_text_str):
                     print("-匹配到第二种格式的 URL (answer)，进行替换")
-                    new_answer = pattern2.sub(lambda m: dynamic_replacement(m, 2, conversationId, image_name), answer_text_str)
+                    new_answer = pattern2.sub(lambda m: dynamic_replacement(m, 2, conversationId, image_name),
+                                              answer_text_str)
+                elif pattern1.search(answer_text_str):
+                    print("-匹配到第一种格式的 URL (answer)，进行替换")
+                    new_answer = pattern1.sub(lambda m: dynamic_replacement(m, 1, conversationId, image_name),
+                                              answer_text_str)
                 else:
-                    if pattern1.search(answer_text_str):
-                        print("-匹配到第一种格式的 URL (answer)，进行替换")
-                        new_answer = pattern1.sub(lambda m: dynamic_replacement(m, 1, conversationId, image_name), answer_text_str)
-                    else:
-                        print("-未匹配到任何 URL (answer)，跳过替换")
-                        new_answer = answer_text_str
+                    print("-未匹配到任何 URL (answer)，跳过替换")
 
-            if rich_text:  # stem
-                rich_text_str = json.dumps(rich_text, ensure_ascii=False)
+            # 处理stem字段
+            if rich_text is not None:
                 if pattern2.search(rich_text_str):
                     print("-匹配到第二种格式的 URL (stem)，进行替换")
-                    new_text = pattern2.sub(lambda m: dynamic_replacement(m, 2, conversationId, image_name), rich_text_str)
+                    new_text = pattern2.sub(lambda m: dynamic_replacement(m, 2, conversationId, image_name),
+                                            rich_text_str)
+                elif pattern1.search(rich_text_str):
+                    print("-匹配到第一种格式的 URL (stem)，进行替换")
+                    new_text = pattern1.sub(lambda m: dynamic_replacement(m, 1, conversationId, image_name),
+                                            rich_text_str)
                 else:
-                    if pattern1.search(rich_text_str):
-                        print("-匹配到第一种格式的 URL (stem)，进行替换")
-                        new_text = pattern1.sub(lambda m: dynamic_replacement(m, 1, conversationId, image_name), rich_text_str)
-                    else:
-                        print("-未匹配到任何 URL (stem)，跳过替换")
-                        new_text = rich_text_str
+                    print("-未匹配到任何 URL (stem)，跳过替换")
+
+            # 更新MongoDB文档
+            update_data = {}
+            if rich_text is not None and new_text != rich_text_str:
+                update_data['stem'] = json.loads(new_text)
+            if answer_text is not None and new_answer != answer_text_str:
+                update_data['answer'] = json.loads(new_answer)
+            if analysis_text is not None and new_analysis != analysis_text_str:
+                update_data['analysis'] = json.loads(new_analysis)
+
+            if update_data:
+                data_list.update_one(
+                    {"_id": document["_id"]},
+                    {"$set": update_data}
+                )
+                print(f"文档已更新：{update_data.keys()}")
+            else:
+                print("文档未更改")
+
+            print("-" * 40)
         except Exception as e:
-            print_red(f"-文本解析或替换时发生异常: {e} ----- 替换操作 进行跳过!!!")
+            print_red(f"处理文档时发生异常: {e}")
             continue
 
         # print("原文本:")
@@ -154,9 +174,8 @@ def re_mango():
 
 
 def empty_mongo(bank):
-    # 清空mongo
-    for collection_name in db.list_collection_names():
-        bank.drop()
+    # 清空指定集合中的所有文档
+    bank.delete_many({})
 
 
 # 文本前面加上红色前缀
@@ -537,7 +556,7 @@ def deduplicate_mongo_data():
     # print(f"字段清理完成，共保留 {len(updated_data)} 条记录")
 
 
-def copy_collection_with_timestamp(data_total='data_total'):
+def copy_collection_with_timestamp():
     """ 原集合data_list复制到新集合并添加时间字段 data_total为目标总集合"""
 
     current_timestamp = datetime.now()
@@ -713,8 +732,6 @@ if __name__ == '__main__':
 
     de_weigh_json()  # 对 data_list 表中的内容进行去重操作
 
-    clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
-
     deduplicate_mongo_data()  # 去掉无用字段
 
     copy_collection_with_timestamp()  # 原集合data_list复制到新集合并添加时间字段 data_total为目标总集合
@@ -722,11 +739,13 @@ if __name__ == '__main__':
     processor = MongoDocProcessor()
     processor.process_documents(data_list)  # 将指定mongo库 保存到本地, 并按指定格式存放
 
-    re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址  | 弃用
+    re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址
 
     # mango_json()  # mango表转json | 弃用
 
-    empty_mongo(bank=data_list)  # 清空data_list库
+    empty_mongo(bank=data_list)  # 清空指定集合中的所有文档
+
+    # clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
 
 """
 第二代版本:在筛选的时候，将cardStem保留，去掉下级conText中的内容

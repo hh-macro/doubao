@@ -22,7 +22,7 @@ def response(flow: http.HTTPFlow) -> None:
     if (
             "zijieapi.com" in flow.request.url and "https://imapi-oth.zijieapi.com/v1/message/get_by_user" in flow.request.url):
         # print(flow.request.url)
-        time.sleep(5)
+        # time.sleep(5)
         flow_res = flow.response.content
         base64_str = base64.b64encode(flow_res).decode('utf-8')
         # print(base64_str)
@@ -33,11 +33,11 @@ def response(flow: http.HTTPFlow) -> None:
             # print(base64_str)
             save_base64_strings_to_file('base64_strings.json')  # 保存
         else:
-            print("截取到包，但程序并未运行---为错误包")
+            print("截取到get_by_user包，但程序并未运行---为错误包")
 
     if (
             "api5-normal-lq.hippoaixue.com" in flow.request.url and "https://api5-normal-lq.hippoaixue.com/hippo/turing/qs/v1/detection/get_or_create" in flow.request.url):
-        time.sleep(3)
+        time.sleep(1)
         try:
             flow_json = flow.response.json()
             search_pieces_list = flow_json['question_search']['search_pieces']

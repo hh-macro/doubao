@@ -1,3 +1,11 @@
+# -- coding: utf-8 --
+# @Author: 胡H
+# @File: main_auto.py
+# @Created: 2025/1/21 11:08
+# @LastModified: 2025/4/25
+# Copyright (c) 2025 by 胡H, All Rights Reserved.
+# @desc:
+
 import time
 from intercept import stop_mitmdump, start_mitmdump
 from auto_hold import hold_folder, print_red
