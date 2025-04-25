@@ -1,13 +1,24 @@
+# -- coding: utf-8 --
+# @Author: 胡H
+# @File: auto_hold.py
+# @Created: 2025/1/22 11:08
+# @LastModified: 2025/4/25
+# Copyright (c) 2025 by 胡H, All Rights Reserved.
+# @desc:
+
 import imghdr
 import os
 import time
 import subprocess
 from pathlib import Path
-
 from datetime import date
 import uiautomator2 as u2
 import shutil
 
+from apps import CONF, logger
+
+
+source_folder = CONF['search']['source_folder']
 
 def time_date():
     #  获取今天的 年-月-日
@@ -29,9 +40,7 @@ def print_red(text):
 def copy_file(source_name):
     """ 将一个文件复制到另一个文件或目录。"""
     # 源文件路径
-    source_folder = Path(r"D:/atimu")
     source = source_folder / source_name  # 源文件的完整路径
-
     # 目标文件路径
     target_folder = Path(rf"D:/aresult/{time_date()}/timu")
     target = target_folder / source_name  # 目标文件的完整路径
@@ -257,15 +266,13 @@ def hold_folder(device_code='6c8f7fe3'):
     d.implicitly_wait(3)
 
     target_folder = "/storage/emulated/0/DCIM"
-    directory_file = r"D:/atimu"
 
     # create_parent_and_children()  # 创建文件夹
     clear_directory(target_folder)  # 第一次清空手机目录
 
-    path = Path(directory_file)
+    path = Path(source_folder)
     # 遍历目录及其所有子目录
     for item in path.rglob("*"):  # rglob("*") 递归所有
-        open("image_cache", "w").close()  # 清空缓存文件
         if item.is_file() and item.suffix.lower() == ".jpg":  # 只处理文件
             if imghdr.what(item) is None:  # 检测文件是否损坏
                 item.unlink()  # 删除文件
@@ -285,6 +292,7 @@ def hold_folder(device_code='6c8f7fe3'):
             push_directory(item, target_folder)  # 传入图片
             time.sleep(2)
             # print(item.stem)  # 文件名无后缀
+            open("image_cache", "w").close()  # 清空缓存文件
             image_cache_w(item.stem)  # 写入缓存
             try:
                 d(resourceId='com.aitutor.hippo:id/na').click(timeout=5)
