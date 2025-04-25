@@ -302,8 +302,25 @@ def hold_folder(device_code='6c8f7fe3'):
 
             clear_directory(target_folder)  # 清空手机目录
             time.sleep(5)
-            d(text='重试').click_exists()
-            if not d(resourceId='com.aitutor.hippo:id/aqr', text='1').exists(timeout=120):
+            # if not d(resourceId='com.aitutor.hippo:id/aqr', text='1').exists(timeout=120):
+            #     print_red(f"网络请求异常\t---- {item.stem}\t 题目无法加载!!! 进行跳过")
+            #     d(resourceId='com.aitutor.hippo:id/amo').click(timeout=5)
+            #     continue
+
+            # 重试实现
+            max_retries = 10  # 最大重试次数
+            retry_interval = 5  # 重试间隔时间，单位为秒
+            retry_count = 0
+            while retry_count < max_retries:
+                if d(text='重试').exists(timeout=2):
+                    # 执行重试操作的代码
+                    print(f"正在尝试重试，第 {retry_count + 1} 次重试...")
+                    d(text='重试').click_exists()
+                    retry_count += 1
+                    time.sleep(retry_interval)  # 等待指定的间隔时间
+                else:
+                    break
+            if retry_count == max_retries:
                 print_red(f"网络请求异常\t---- {item.stem}\t 题目无法加载!!! 进行跳过")
                 d(resourceId='com.aitutor.hippo:id/amo').click(timeout=5)
                 continue
