@@ -2,7 +2,7 @@
 import base64
 import json
 from pathlib import Path
-from protobuf_to import GetByUserInit
+from apps.protobuf_to import GetByUserInit
 
 
 # 对base64_strings.json 文件里面的base64编码进行去重操作

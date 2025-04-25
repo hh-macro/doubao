@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from datetime import datetime
 import requests
-from protobuf_to import GetByUserInitTwo
+from apps.protobuf_to import GetByUserInitTwo
 import pymongo
 from bson.json_util import dumps
 

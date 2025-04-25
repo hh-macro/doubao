@@ -19,8 +19,8 @@ from bson.json_util import dumps
 from bson import json_util
 from collections import defaultdict
 
-from com import detection_coord  #
-from protobuf_to import GetByUserInit
+from apps.com import detection_coord  #
+from apps.protobuf_to import GetByUserInit
 
 client = pymongo.MongoClient("localhost", 27017)
 
@@ -35,10 +35,10 @@ def re_mango():
     pattern1 = re.compile(r'https:(.*?).png', re.IGNORECASE)
     pattern2 = re.compile(r'!\[img\]\(https:(.*?)\)', re.IGNORECASE)
 
-    datee_name = time_date()  # 当前时间
+    datee_name = datetime.now().strftime("%Y-%m-%d")  # 当前时间
 
     # 定义替换逻辑
-    def dynamic_replacement(match, pattern_type):
+    def dynamic_replacement(match, pattern_type, conversationId, image_name):
         if pattern_type == 1:  # 第一种格式
             rout_img = 'https:' + match.group(1) + '.png'
         else:  # 第二种格式
@@ -47,13 +47,13 @@ def re_mango():
             # print('rout_img:\t', rout_img)
             image_content = requests.get(rout_img).content
             png_name = int(time.time() * 1000000)
-            with open(rf'D:/aresult/{datee_name}/images/{png_name}.png', 'wb') as f:
+            with open(rf'D:/aresult/{datee_name}/{image_name}/{conversationId}/images/{png_name}.png', 'wb') as f:
                 f.write(image_content)
             # print(f'{rout_img} ----保存成功')
 
             if pattern_type == 2:
-                return rf"<img src='/aresult/{datee_name}/images/{png_name}.png' />"
-            return rf"/aresult/{datee_name}/images/{png_name}.png"
+                return rf"<img src='/aresult/{datee_name}/{image_name}/{conversationId}/images/{png_name}.png' />"
+            return rf"/aresult/{datee_name}/{image_name}/{conversationId}/images/{png_name}.png"
         except Exception as e:
             print_red(f"{e}-----------------图片下载发送异常--返回原值")
 
@@ -64,16 +64,20 @@ def re_mango():
             rich_text = document.get('stem')  # 确保提取字段内容
             answer_text = document.get('answer')  # 确保提取answer字段内容
             analysis_text = document.get('analysis')  # 确保提取analysis字段内容
+            conversationId = document.get('conversationId')  # 确保提取conversationId字段内容
+            image_name = document.get('image_name')  # 确保提取analysis字段内容
             # print('rich_text:\t', rich_text)
             if analysis_text:  # analysis
                 analysis_text_str = json.dumps(analysis_text, ensure_ascii=False)
                 if pattern2.search(analysis_text_str):
                     print("-匹配到第二种格式的 URL (analysis)，进行替换")
-                    new_analysis = pattern2.sub(lambda m: dynamic_replacement(m, 2), analysis_text_str)
+                    new_analysis = pattern2.sub(lambda m: dynamic_replacement(m, 2, conversationId, image_name),
+                                                analysis_text_str)
                 else:
                     if pattern1.search(analysis_text_str):
                         print("-匹配到第一种格式的 URL (analysis)，进行替换")
-                        new_analysis = pattern1.sub(lambda m: dynamic_replacement(m, 1), analysis_text_str)
+                        new_analysis = pattern1.sub(lambda m: dynamic_replacement(m, 1, conversationId, image_name),
+                                                    analysis_text_str)
                     else:
                         print("-未匹配到任何 URL (analysis)，跳过替换")
                         new_analysis = analysis_text_str
@@ -82,11 +86,11 @@ def re_mango():
                 answer_text_str = json.dumps(answer_text, ensure_ascii=False)
                 if pattern2.search(answer_text_str):
                     print("-匹配到第二种格式的 URL (answer)，进行替换")
-                    new_answer = pattern2.sub(lambda m: dynamic_replacement(m, 2), answer_text_str)
+                    new_answer = pattern2.sub(lambda m: dynamic_replacement(m, 2, conversationId, image_name), answer_text_str)
                 else:
                     if pattern1.search(answer_text_str):
                         print("-匹配到第一种格式的 URL (answer)，进行替换")
-                        new_answer = pattern1.sub(lambda m: dynamic_replacement(m, 1), answer_text_str)
+                        new_answer = pattern1.sub(lambda m: dynamic_replacement(m, 1, conversationId, image_name), answer_text_str)
                     else:
                         print("-未匹配到任何 URL (answer)，跳过替换")
                         new_answer = answer_text_str
@@ -95,11 +99,11 @@ def re_mango():
                 rich_text_str = json.dumps(rich_text, ensure_ascii=False)
                 if pattern2.search(rich_text_str):
                     print("-匹配到第二种格式的 URL (stem)，进行替换")
-                    new_text = pattern2.sub(lambda m: dynamic_replacement(m, 2), rich_text_str)
+                    new_text = pattern2.sub(lambda m: dynamic_replacement(m, 2, conversationId, image_name), rich_text_str)
                 else:
                     if pattern1.search(rich_text_str):
                         print("-匹配到第一种格式的 URL (stem)，进行替换")
-                        new_text = pattern1.sub(lambda m: dynamic_replacement(m, 1), rich_text_str)
+                        new_text = pattern1.sub(lambda m: dynamic_replacement(m, 1, conversationId, image_name), rich_text_str)
                     else:
                         print("-未匹配到任何 URL (stem)，跳过替换")
                         new_text = rich_text_str
@@ -593,13 +597,15 @@ class MongoDocProcessor:
     def copy_image(self, source_path, destination_path):
         # 将一张图片从一个文件夹复制到另一个文件夹
         shutil.copy2(source_path, destination_path)
+
     def _read_search_file(self):
         # 加载 JSON 数据
         with open('search_message_list.json', 'r', encoding='utf-8') as f:
             json_data = json.load(f)
         return json_data
+
     def _parse_timestamp(self):
-        """生成当天日期 ---> 2025-4-18 """
+        """生成当天日期 ---> 2025-04-18 """
         return datetime.now().strftime("%Y-%m-%d")
 
     def _get_output_paths(self, doc):
@@ -668,6 +674,7 @@ class MongoDocProcessor:
                     f.write(json.dumps(pos))
             else:
                 print_red(f"没有找到与image_name匹配的pos: {image_name},\t conversationId: {conversation_id}")
+
     def process_documents(self, data_list):
         """处理文档主方法"""
         cursor = data_list.find({})  # 查找并将data_list库内容转换为JSON格式
@@ -706,7 +713,7 @@ if __name__ == '__main__':
 
     de_weigh_json()  # 对 data_list 表中的内容进行去重操作
 
-    # clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
+    clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
 
     deduplicate_mongo_data()  # 去掉无用字段
 
@@ -715,11 +722,11 @@ if __name__ == '__main__':
     processor = MongoDocProcessor()
     processor.process_documents(data_list)  # 将指定mongo库 保存到本地, 并按指定格式存放
 
-    # re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址  | 弃用
+    re_mango()  # 对mangodb中 data_list 表中的内容进行re正则替换----将在线地址替换成本地地址  | 弃用
 
     # mango_json()  # mango表转json | 弃用
 
-    # empty_mongo(bank=data_list)  # 清空data_list库
+    empty_mongo(bank=data_list)  # 清空data_list库
 
 """
 第二代版本:在筛选的时候，将cardStem保留，去掉下级conText中的内容
