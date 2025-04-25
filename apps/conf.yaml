@@ -1,0 +1,11 @@
+
+# ===================================== mongo配置 ======================================
+mongodb:
+  url: mongodb://localhost:27017/
+  db: doubao
+  default: data_list
+# ===================================== 处理配置 ========================================
+processor:
+  source_file: D:\aresult
+  source_file_all:  D:\atimu
+  result: D:\aresult
