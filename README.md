@@ -50,8 +50,15 @@ frida -U -n com.aitutor.hippo -l byteDance.js
 ./fri666 -l 0.0.0.0:1234
 ```
 
-
-
+##### 查看frida-server是否启动
+```
+adb shell "ps -A | grep frida-server"
+```
+##### 关闭服务
+```
+db shell "pkill -f frida-server"  # 强制终止设备上所有与 Frida Server 相关的进程
+adb shell "su -c 'kill -9 20048'"  
+```
 #### 针对ZJ跳过SSL证书验证
 
 `byteDance.js`
