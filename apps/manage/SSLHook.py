@@ -9,9 +9,10 @@ import time
 
 from apps.com import frida_hook, start_frida_server, stop_frida_server
 
-server_proc = start_frida_server()
-time.sleep(5)
-frida_hook()
-time.sleep(5)
-input("按 Enter 键停止 Hook...\n")
-stop_frida_server(server_proc)
+if __name__ == '__main__':
+    server_proc = start_frida_server()
+    time.sleep(5)
+    frida_hook()
+    time.sleep(5)
+    input("按 Enter 键停止 Hook...\n")
+    stop_frida_server(server_proc)

@@ -6,8 +6,8 @@
 # Copyright (c) 2025 by 胡H, All Rights Reserved.
 # @desc:
 import time
-from intercept import stop_mitmdump, start_mitmdump
-from auto_hold import hold_folder
+from apps.manage.intercept import stop_mitmdump, start_mitmdump
+from apps.manage.auto_hold import hold_folder
 
 from apps import logger
 from apps.com import frida_hook, start_frida_server, stop_frida_server
