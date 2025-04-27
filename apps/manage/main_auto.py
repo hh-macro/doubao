@@ -15,6 +15,7 @@ from apps.com import frida_hook, start_frida_server, stop_frida_server
 
 def main_auto():
     open("image_cache", "w").close()  # 清空缓存文件
+    open("search_message_list.json", "w").close()  # 清空缓存文件
     # 启动子进程
     mitmdump_process = start_mitmdump()  # 启动 mitmdump
     time.sleep(10)

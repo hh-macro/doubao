@@ -200,7 +200,7 @@ def hold_folder():
                     aog_page = d(resourceId='com.aitutor.hippo:id/aqr', text=f'{io}').click_exists()
                     if not aog_page:
                         print(f'页面题目结果一共{io - 1}道题目')
-                        time.sleep(15)
+                        time.sleep(20)
                         destination_path = r'D:\atimu_all'
                         shutil.copy2(item, destination_path)
                         os.remove(item)  # 删除当前图片

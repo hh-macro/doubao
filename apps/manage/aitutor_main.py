@@ -269,8 +269,8 @@ def circulate():
     # 遍历列表中的每个字典
     for i, item in enumerate(base64_list, start=1):
         for key_cache, base64_str in item.items():  # 提取字典中的键和值
-            if len(base64_str) > 5000:
-                print(f"第 {i} 个条目(键: {key_cache})的 base64 字符串长度超过 5000，正在处理...")
+            if len(base64_str) > 3000:
+                print(f"第 {i} 个条目(键: {key_cache})的 base64 字符串长度超过 3000，正在处理...")
                 unpack(base64_str, key_cache)  # 调用 unpack 方法处理
                 print("---------------------------------------------------")
 
