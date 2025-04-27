@@ -5,3 +5,5 @@ from .algorithm_detection import detection_coord  # 获取原题坐标
 
 from .hookPy import frida_hook
 from .fridaServer import frida_server
+
+from .AdbDevices import adb_devices

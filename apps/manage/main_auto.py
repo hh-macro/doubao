@@ -10,7 +10,7 @@ import time
 from intercept import stop_mitmdump, start_mitmdump
 from auto_hold import hold_folder, print_red
 
-from apps import logger
+from apps import logger, frida_hook, frida_server
 
 def main_auto():
     open("image_cache", "w").close()  # 清空缓存文件

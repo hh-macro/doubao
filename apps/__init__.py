@@ -12,7 +12,7 @@ import socket
 from loguru import logger
 import sys
 
-from apps.com import detection_coord, fridaServer, frida_hook
+from apps.com import detection_coord, frida_server, frida_hook, adb_devices
 from apps.protobuf_to import GetByUserInit
 
 # 获取当前文件所在的目录（即 apps 目录）

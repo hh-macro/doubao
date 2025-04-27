@@ -15,7 +15,7 @@ from datetime import date
 import uiautomator2 as u2
 import shutil
 
-from apps import CONF, logger
+from apps import CONF, logger, adb_devices
 
 
 source_folder = CONF['search']['source_folder']
@@ -260,9 +260,9 @@ def create_parent_and_children():
 #                 d(text='再拍一页').click_exists(timeout=10)
 #                 continue
 #             d(text='再拍一页').click_exists(timeout=10)
-def hold_folder(device_code='6c8f7fe3'):
+def hold_folder():
     # 小米11
-    d = u2.connect(device_code)
+    d = u2.connect(f'{adb_devices}')
     d.implicitly_wait(3)
 
     target_folder = "/storage/emulated/0/DCIM"
