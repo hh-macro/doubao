@@ -12,7 +12,7 @@ import socket
 from loguru import logger
 import sys
 
-from apps.com import detection_coord
+from apps.com import detection_coord, fridaServer, frida_hook
 from apps.protobuf_to import GetByUserInit
 
 # 获取当前文件所在的目录（即 apps 目录）
@@ -31,7 +31,7 @@ data_total = db[CONF['mongodb']['data_total']]  # 操作集合
 
 device_id = socket.gethostname()  # 当前设备ID
 
-# ================================= 日志 =====================================
+# ================================= 日志配置 =====================================
 log_dir = Path(project_rootpath)
 log_dir.mkdir(parents=True, exist_ok=True)
 
