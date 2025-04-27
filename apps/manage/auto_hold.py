@@ -151,13 +151,13 @@ def hold_folder():
                 time.sleep(2)
                 d(resourceId='com.aitutor.hippo:id/amo').click_exists(timeout=3)
                 d(text='再拍一页').click_exists(timeout=2)
+                continue
+                # if d(resourceId='com.aitutor.hippo:id/ax0').exists or d(text='识别错误').exists:
+                #     d(text='重新拍照').click_exists(timeout=3)
+                #     d(resourceId='com.aitutor.hippo:id/g6').click_exists()
 
-                if d(resourceId='com.aitutor.hippo:id/ax0').exists or d(text='识别错误').exists:
-                    d(text='重新拍照').click_exists(timeout=3)
-
-                    d(resourceId='com.aitutor.hippo:id/g6').click_exists()
-                d(resourceId='com.aitutor.hippo:id/na').click(timeout=5)
-                d(resourceId='com.aitutor.hippo:id/2s')[0].click(timeout=5)
+                # d(resourceId='com.aitutor.hippo:id/na').click(timeout=5)
+                # d(resourceId='com.aitutor.hippo:id/2s')[0].click(timeout=5)
 
             clear_directory(target_folder)  # 清空手机目录
             time.sleep(5)
