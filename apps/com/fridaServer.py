@@ -5,41 +5,70 @@
 # @LastModified: 
 # Copyright (c) 2025 by 胡H, All Rights Reserved.
 # @desc: 启动frida-server服务
+
 import subprocess
+import time
+from multiprocessing import Process
 
 
 def frida_server():
-    # 进入 adb shell 环境
-    adb_shell_process = subprocess.Popen(['adb', 'shell'], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                         stderr=subprocess.PIPE)
+    """启动 frida-server"""
+    try:
+        # 终止已存在的 frida-server
+        subprocess.run(
+            ["adb", "shell", "su", "-c", "pkill -9 frida-server"],
+            check=True,
+            timeout=5
+        )
+    except subprocess.CalledProcessError:
+        pass  # 忽略未找到进程的错误
 
-    # 在 adb shell 中执行 su 命令获取超级用户权限
-    adb_shell_process.stdin.write(b'su\n')
-    adb_shell_process.stdin.flush()
+    # 设置权限
+    subprocess.run(
+        ["adb", "shell", "su", "-c", "chmod 755 /data/local/tmp/frida-server-16.5.9-android-arm64"],
+        check=True
+    )
 
-    # 切换到目标目录
-    adb_shell_process.stdin.write(b'cd /data/local/tmp\n')
-    adb_shell_process.stdin.flush()
+    # 启动 frida-server（非阻塞）
+    proc = subprocess.Popen(
+        ["adb", "shell", "su -c 'cd /data/local/tmp && ./frida-server-16.5.9-android-arm64 &'"],
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
 
-    # 列出当前目录下的文件和目录
-    adb_shell_process.stdin.write(b'ls\n')
-    adb_shell_process.stdin.flush()
+    # 验证启动状态
+    time.sleep(3)
+    result = subprocess.run(
+        ["adb", "shell", "pgrep -f frida-server"],
+        stdout=subprocess.PIPE
+    )
+    if not result.stdout:
+        raise RuntimeError("Frida-server 启动失败")
 
-    # 执行 frida-server
-    adb_shell_process.stdin.write(b'./frida-server-16.5.9-android-arm64')
-    adb_shell_process.stdin.flush()
 
-    # 读取输出并打印，可以根据需要处理输出
-    while True:
-        output = adb_shell_process.stdout.readline()
-        if output == b'' and adb_shell_process.poll() is not None:
-            break
-        if output:
-            print(output.decode().strip())
+def run_frida_server():
+    """在子进程中运行 frida_server"""
+    frida_server()
 
-    # 等待进程结束
-    adb_shell_process.wait()
+
+def start_frida_server():
+    """启动 frida_server 子进程并返回进程对象"""
+    proc = Process(target=run_frida_server)
+    proc.start()
+    return proc
+
+
+def stop_frida_server(proc):
+    """终止 frida_server 子进程"""
+    proc.terminate()
+    proc.join()
 
 
 if __name__ == "__main__":
-    frida_server()
+    # 启动 frida_server 子进程
+    server_proc = start_frida_server()
+    print("Frida-server 正在运行...")
+    input("按 Enter 键终止服务...")
+    # 终止 frida_server 子进程
+    stop_frida_server(server_proc)

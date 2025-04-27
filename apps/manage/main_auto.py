@@ -5,12 +5,13 @@
 # @LastModified: 2025/4/25
 # Copyright (c) 2025 by 胡H, All Rights Reserved.
 # @desc:
-
 import time
 from intercept import stop_mitmdump, start_mitmdump
-from auto_hold import hold_folder, print_red
+from auto_hold import hold_folder
 
-from apps import logger, frida_hook, frida_server
+from apps import logger
+from apps.com import frida_hook, start_frida_server, stop_frida_server
+
 
 def main_auto():
     open("image_cache", "w").close()  # 清空缓存文件
@@ -32,7 +33,8 @@ def main_auto():
         time.sleep(15)
         print("-" * 60)
         stop_mitmdump(mitmdump_process)  # 关闭 mitmdump
-        print("关闭 mitmdump 子进程\t 主进程结束运行...")
+
+        print("关闭 mitmdump 子进程及 frida 子进程\t 主进程结束运行...")
 
 
 if __name__ == "__main__":

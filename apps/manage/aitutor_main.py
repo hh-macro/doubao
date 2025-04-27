@@ -19,7 +19,9 @@ from bson.json_util import dumps
 from bson import json_util
 from collections import defaultdict
 
-from apps import CONF, data_list, detection_coord, GetByUserInit, data_total, db, logger
+from apps import CONF, data_list, data_total, db, logger
+from apps.com import detection_coord
+from apps.protobuf_to import GetByUserInit
 
 aresult = CONF['processor']['result']
 source_file_all = CONF['processor']['source_file_all']
@@ -763,7 +765,10 @@ class MongoDocProcessor:
         except Exception as e:
             logger.error(f"处理文档 {documents} 失败:\t {str(e)}")
         print(f'data_list 库中所有内容已成功转化到本地 json')
+
         self.coordinate()
+        self.pox_file_structure()
+        self.screen_local_file()
 
 
 if __name__ == '__main__':
@@ -791,9 +796,9 @@ if __name__ == '__main__':
 
     # mango_json()  # mango表转json | 弃用
 
-    # empty_mongo(bank=data_list)  # 清空指定集合中的所有文档
+    empty_mongo(bank=data_list)  # 清空指定集合中的所有文档
 
-    # clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
+    clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
 
     logger.success("所有数据已全部处理完成")
 """

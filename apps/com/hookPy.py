@@ -2,17 +2,17 @@
 # @Author: 胡H
 # @File: hook_py.py
 # @Created: 2025/4/25 17:43
-# @LastModified: 
+# @LastModified:
 # Copyright (c) 2025 by 胡H, All Rights Reserved.
 # @desc: hook
 
 import subprocess
 from pathlib import Path
-
+from multiprocessing import Process
 from apps import current_file, logger
 
 
-def frida_hook(package_name, script_path):
+def frida_hook(package_name="com.aitutor.hippo", script_path=Path(current_file, "status/byteDance.js")):
     """
     在 Python 中执行 Frida Hook
     参数:
@@ -25,7 +25,7 @@ def frida_hook(package_name, script_path):
         "frida",
         "-U",  # 使用 USB 设备
         "-f", package_name,  # 启动应用程序
-        "-l", script_path,  # 加载脚本
+        "-l", str(script_path),  # 加载脚本，Path 对象需转为字符串
         # "--no-pause"  # 自动启动主活动
     ]
 
@@ -65,5 +65,4 @@ def frida_hook(package_name, script_path):
 
 
 if __name__ == "__main__":
-    # 执行 Hook
-    frida_hook("com.aitutor.hippo", Path(current_file, "status/byteDance.js"))
+    frida_hook()
