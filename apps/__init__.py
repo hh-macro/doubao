@@ -15,6 +15,7 @@ import sys
 # 获取当前文件所在的目录（即 apps 目录）
 current_file = Path(__file__).parent  # E:\AAA-project\doubao\apps
 project_rootpath = current_file.parent  # E:\AAA-project\doubao
+now_path_current_file = Path(current_file, 'manage')  # E:\AAA-project\doubao\apps\manage
 
 with open(Path(current_file, "conf.yaml"), "r", encoding='utf-8') as f:
     CONF = yaml.safe_load(f)

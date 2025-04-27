@@ -19,7 +19,7 @@ from bson.json_util import dumps
 from bson import json_util
 from collections import defaultdict
 
-from apps import CONF, data_list, data_total, db, logger
+from apps import CONF, data_list, data_total, db, logger, current_file, now_path_current_file
 from apps.com import detection_coord
 from apps.protobuf_to import GetByUserInit
 
@@ -219,7 +219,7 @@ def create_parent_and_children():
 # 对base64_strings.json 文件里面的base64编码进行去重操作
 def the_frist():
     """ 对 base64_strings.json 文件里面的 base64 编码进行去重操作，同时保留原始的键 """
-    file_path = 'base64_strings.json'
+    file_path = Path(now_path_current_file, 'base64_strings.json')
 
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -254,7 +254,7 @@ def the_frist():
 # 读取 base64_strings.json 中的内容、遍历、筛选出字符超过10000的、调用 unpack() 方法
 def circulate():
     """ 读取 base64_strings.json 中的内容、遍历、筛选出字符超过10000的、调用 unpack() 方法 """
-    file_path = "base64_strings.json"
+    file_path = Path(now_path_current_file, "base64_strings.json")
 
     try:
         with open(file_path, "r", encoding="utf-8") as file:
@@ -593,7 +593,7 @@ def copy_collection_with_timestamp():
 def load_search_data():
     """ 读取search_message_list.json并构建映射关系"""
     image_conv_map = defaultdict(set)
-    with open('search_message_list.json', 'r', encoding='utf-8') as f:
+    with open(Path(now_path_current_file, 'search_message_list.json'), 'r', encoding='utf-8') as f:
         search_list = json.load(f)
     for item in search_list:
         image_name = item['image_name']
@@ -627,7 +627,7 @@ class MongoDocProcessor:
 
     def _read_search_file(self):
         # 加载 JSON 数据
-        with open('search_message_list.json', 'r', encoding='utf-8') as f:
+        with open(Path(now_path_current_file, 'search_message_list.json'), 'r', encoding='utf-8') as f:
             json_data = json.load(f)
         return json_data
 
@@ -798,7 +798,7 @@ if __name__ == '__main__':
 
     empty_mongo(bank=data_list)  # 清空指定集合中的所有文档
 
-    clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
+    # clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
 
     logger.success("所有数据已全部处理完成")
 """

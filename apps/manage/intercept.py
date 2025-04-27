@@ -10,18 +10,24 @@ import base64
 import json
 import time
 from datetime import datetime
+from pathlib import Path
+
 from mitmproxy.tools.main import mitmdump
 import subprocess  # 导入 subprocess 模块用于启动和关闭 mitmdump
 from mitmproxy import http
+
+from apps import current_file, now_path_current_file
 
 # 用于存储所有 base64 编码的字符串
 base64_list = []
 search_list = []
 
+# now_path_current_file = Path(current_file, 'manage')
+
 
 def image_cache_r():
     # 从缓存文件读取图片名
-    with open("image_cache", "r") as cache_file:
+    with open(Path(now_path_current_file, "image_cache"), "r") as cache_file:
         cached_image_name = cache_file.read()
     return cached_image_name
 
@@ -39,7 +45,7 @@ def response(flow: http.HTTPFlow) -> None:
             # 创建字典并添加到列表中
             base64_list.append({key: base64_str})
             # print(base64_str)
-            save_base64_strings_to_file('base64_strings.json')  # 保存
+            save_base64_strings_to_file(Path(now_path_current_file, 'base64_strings.json'))  # 保存
         else:
             print("截取到get_by_user包，但程序并未运行---为错误包")
 
@@ -57,7 +63,7 @@ def response(flow: http.HTTPFlow) -> None:
                         'conversation_id': search_pieces['conversation_id'],
                         'pos': search_pieces['pos']
                     })
-                with open('search_message_list.json', 'w') as f:
+                with open(Path(now_path_current_file, 'search_message_list.json'), 'w') as f:
                     json.dump(search_list, f, indent=4)
                 print(f"search_message_list 列表已成功w保存......")
             else:
@@ -86,7 +92,7 @@ def start_mitmdump():
 
 # 新增函数：关闭 mitmdump
 def stop_mitmdump(process):
-    open("image_cache", "w").close()  # 清空缓存文件
+    open(Path(now_path_current_file, "image_cache"), "w").close()  # 清空缓存文件
     process.terminate()  # 发送终止信号
     process.wait()  # 等待进程结束
     print("mitmdump 已关闭")
@@ -97,7 +103,7 @@ mitmdump -q -s intercept.py  ----启动截包
 """
 
 if __name__ == '__main__':
-    open("image_cache", "w").close()  # 清空缓存文件
+    open(Path(now_path_current_file, "image_cache"), "w").close()  # 清空缓存文件
     mitmdump_process = start_mitmdump()  # 启动 mitmdump
 
     time.sleep(600)

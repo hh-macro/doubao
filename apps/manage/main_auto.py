@@ -6,16 +6,18 @@
 # Copyright (c) 2025 by 胡H, All Rights Reserved.
 # @desc:
 import time
+from pathlib import Path
+
 from apps.manage.intercept import stop_mitmdump, start_mitmdump
 from apps.manage.auto_hold import hold_folder
 
-from apps import logger
+from apps import logger, now_path_current_file
 from apps.com import frida_hook, start_frida_server, stop_frida_server
 
 
 def main_auto():
-    open("image_cache", "w").close()  # 清空缓存文件
-    open("search_message_list.json", "w").close()  # 清空缓存文件
+    open(Path(now_path_current_file, "image_cache"), "w").close()  # 清空缓存文件
+    open(Path(now_path_current_file, "search_message_list.json"), "w").close()  # 清空缓存文件
     # 启动子进程
     mitmdump_process = start_mitmdump()  # 启动 mitmdump
     time.sleep(10)

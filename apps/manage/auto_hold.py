@@ -14,10 +14,11 @@ from datetime import date
 import uiautomator2 as u2
 import shutil
 
-from apps import CONF, logger
+from apps import CONF, logger, current_file
 from apps.com import adb_devices
 
 source_folder = CONF['search']['source_folder']
+now_path_current_file = Path(current_file, 'manage')
 
 
 def time_date():
@@ -53,14 +54,14 @@ def copy_file(source_name):
 
 def image_cache_w(image_name):
     # 写入缓存文件
-    with open("image_cache", "w") as cache_file:
+    with open(Path(now_path_current_file, "image_cache"), "w") as cache_file:
         cache_file.write(image_name)
     print(image_name + ' --加入缓存成功!')
 
 
 def image_cache_r():
     # 从缓存文件读取图片名
-    with open("image_cache", "r") as cache_file:
+    with open(Path(now_path_current_file, "image_cache"), "r") as cache_file:
         cached_image_name = cache_file.read()
     return cached_image_name
 
@@ -138,7 +139,7 @@ def hold_folder():
             push_directory(item, target_folder)  # 传入图片
             time.sleep(2)
             # print(item.stem)  # 文件名无后缀
-            open("image_cache", "w").close()  # 清空缓存文件
+            open(Path(now_path_current_file, "image_cache"), "w").close()  # 清空缓存文件
             image_cache_w(item.stem)  # 写入缓存
             try:
                 d(resourceId='com.aitutor.hippo:id/na').click(timeout=5)
@@ -148,9 +149,13 @@ def hold_folder():
             except Exception as e:
                 print_red(f"图片加载异常，将重新搜索题目 : {e}")
                 time.sleep(2)
-                d(resourceId='com.aitutor.hippo:id/amo').click_exists(timeout=10)
+                d(resourceId='com.aitutor.hippo:id/amo').click_exists(timeout=3)
                 d(text='再拍一页').click_exists(timeout=2)
 
+                if d(resourceId='com.aitutor.hippo:id/ax0').exists or d(text='识别错误').exists:
+                    d(text='重新拍照').click_exists(timeout=3)
+
+                    d(resourceId='com.aitutor.hippo:id/g6').click_exists()
                 d(resourceId='com.aitutor.hippo:id/na').click(timeout=5)
                 d(resourceId='com.aitutor.hippo:id/2s')[0].click(timeout=5)
 
@@ -160,11 +165,15 @@ def hold_folder():
             #     print_red(f"网络请求异常\t---- {item.stem}\t 题目无法加载!!! 进行跳过")
             #     d(resourceId='com.aitutor.hippo:id/amo').click(timeout=5)
             #     continue
+            if d(resourceId='com.aitutor.hippo:id/ax0').exists or d(text='识别错误').exists:
+                d(text='重新拍照').click_exists(timeout=3)
+                d(resourceId='com.aitutor.hippo:id/g6').click_exists()
 
             if d(text='识别错误 ').click_exists(timeout=4):
                 d(resourceId='com.aitutor.hippo:id/fl').click(timeout=4)
+                continue
 
-            # 重试实现
+                # 重试实现
             max_retries = 10  # 最大重试次数
             retry_interval = 5  # 重试间隔时间，单位为秒
             retry_count = 0
