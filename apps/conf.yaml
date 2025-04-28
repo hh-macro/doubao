@@ -2,7 +2,7 @@
 # ===================================== 自动化配置 ======================================
 search:
   source_folder: D:\atimu
-
+  degree: 200  # 上限
 # ===================================== mongo配置 ======================================
 mongodb:
   url: mongodb://root:Aliyun_Mongo_20250218@dds-2vc3c96a7e797ee41197-pub.mongodb.cn-chengdu.rds.aliyuncs.com:3717,dds-2vc3c96a7e797ee42971-pub.mongodb.cn-chengdu.rds.aliyuncs.com:3717/admin?replicaSet=mgset-1150525521

@@ -18,6 +18,7 @@ from apps import CONF, logger, current_file, now_path_current_file
 from apps.com import adb_devices
 
 source_folder = CONF['search']['source_folder']
+degree = CONF['search']['degree']  # 上限
 
 
 def time_date():
@@ -115,10 +116,13 @@ def hold_folder():
 
     # create_parent_and_children()  # 创建文件夹
     clear_directory(target_folder)  # 第一次清空手机目录
-
+    gree = 0
     path = Path(source_folder)
     # 遍历目录及其所有子目录
     for item in path.rglob("*"):  # rglob("*") 递归所有
+        gree += 1
+        if gree > degree:
+            logger.success(f'当前已到达每日最大上限......')
         if item.is_file() and item.suffix.lower() == ".jpg":  # 只处理文件
             if os.path.getsize(item) == 0:  # 检测文件是否损坏
                 item.unlink()  # 删除文件
