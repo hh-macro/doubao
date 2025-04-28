@@ -123,6 +123,7 @@ def hold_folder():
         gree += 1
         if gree > degree:
             logger.success(f'当前已到达每日最大上限......')
+            return
         if item.is_file() and item.suffix.lower() == ".jpg":  # 只处理文件
             if os.path.getsize(item) == 0:  # 检测文件是否损坏
                 item.unlink()  # 删除文件
@@ -154,6 +155,8 @@ def hold_folder():
                 time.sleep(2)
                 d(resourceId='com.aitutor.hippo:id/amo').click_exists(timeout=3)
                 d(text='再拍一页').click_exists(timeout=2)
+                if d(resourceId='com.aitutor.hippo:id/ax0').exists or d(text='识别错误').exists:
+                    d(text='重新拍照').click_exists(timeout=3)
                 continue
                 # if d(resourceId='com.aitutor.hippo:id/ax0').exists or d(text='识别错误').exists:
                 #     d(text='重新拍照').click_exists(timeout=3)
