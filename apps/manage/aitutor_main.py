@@ -623,7 +623,10 @@ class MongoDocProcessor:
 
     def copy_image(self, source_path, destination_path):
         # 将一张图片从一个文件夹复制到另一个文件夹
-        shutil.copy2(source_path, destination_path)
+        try:
+            shutil.copy2(source_path, destination_path)
+        except Exception as e:
+            logger.error(f'在文件夹中找不到该需要复制的图片文件 {e}')
 
     def _read_search_file(self):
         # 加载 JSON 数据
