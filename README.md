@@ -87,7 +87,7 @@ adb shell "ps -A | grep frida-server"
 db shell "pkill -f frida-server"  # 强制终止设备上所有与 Frida Server 相关的进程
 adb shell "su -c 'kill -9 20048'"  
 ```
-#### 针对ZJ跳过SSL证书验证
+#### 
 
 `byteDance.js`
 
