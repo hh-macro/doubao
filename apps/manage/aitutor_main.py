@@ -45,13 +45,13 @@ def re_mango():
             # print('rout_img:\t', rout_img)
             image_content = requests.get(rout_img).content
             png_name = int(time.time() * 1000000)
-            with open(rf'{aresult}/{datee_name}/{image_name}/{conversationId}/images/{png_name}.png', 'wb') as f:
+            with open(rf'{aresult}/{datee_name}/{image_name}/{conversationId}/{png_name}.png', 'wb') as f:
                 f.write(image_content)
             # print(f'{rout_img} ----保存成功')
 
             if pattern_type == 2:
-                return rf"<img src='/{aresult}/{datee_name}/{image_name}/{conversationId}/images/{png_name}.png' />"
-            return rf"/{aresult}/{datee_name}/{image_name}/{conversationId}/images/{png_name}.png"
+                return rf"<img src='/{aresult}/{datee_name}/{image_name}/{conversationId}/{png_name}.png' />"
+            return rf"/{aresult}/{datee_name}/{image_name}/{conversationId}/{png_name}.png"
         except Exception as e:
             logger.error(f"{e}-----------------图片下载发送异常--返回原值")
 
