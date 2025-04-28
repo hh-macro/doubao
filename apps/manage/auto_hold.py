@@ -14,11 +14,10 @@ from datetime import date
 import uiautomator2 as u2
 import shutil
 
-from apps import CONF, logger, current_file
+from apps import CONF, logger, current_file, now_path_current_file
 from apps.com import adb_devices
 
 source_folder = CONF['search']['source_folder']
-now_path_current_file = Path(current_file, 'manage')
 
 
 def time_date():
@@ -49,7 +48,7 @@ def copy_file(source_name):
     try:
         shutil.copy(source, target)
     except Exception as e:
-        print_red(f"复制文件时发生错误：{e}")
+        logger.error(f"复制文件时发生错误：{e}")
 
 
 def image_cache_w(image_name):
@@ -147,7 +146,7 @@ def hold_folder():
                 time.sleep(5)
                 d(text='重试').click_exists()
             except Exception as e:
-                print_red(f"图片加载异常，将重新搜索题目 : {e}")
+                logger.error(f"图片加载异常，将重新搜索题目 : {e}")
                 time.sleep(2)
                 d(resourceId='com.aitutor.hippo:id/amo').click_exists(timeout=3)
                 d(text='再拍一页').click_exists(timeout=2)
@@ -187,7 +186,7 @@ def hold_folder():
                 else:
                     break
             if retry_count == max_retries:
-                print_red(f"网络请求异常\t---- {item.stem}\t 题目无法加载!!! 进行跳过")
+                logger.error(f"网络请求异常\t---- {item.stem}\t 题目无法加载!!! 进行跳过")
                 d(resourceId='com.aitutor.hippo:id/amo').click(timeout=5)
                 continue
             try:
@@ -215,7 +214,7 @@ def hold_folder():
                         os.remove(item)  # 删除当前图片
                         break
             except Exception as e:
-                print_red(f"翻页过程出现故障, 将中断翻页搜索下一个题目---- {e}")
+                logger.error(f"翻页过程出现故障, 将中断翻页搜索下一个题目---- {e}")
                 d(text='再拍一页').click_exists(timeout=10)
                 continue
             d(text='再拍一页').click_exists(timeout=10)

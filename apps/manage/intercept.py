@@ -16,11 +16,12 @@ from mitmproxy.tools.main import mitmdump
 import subprocess  # 导入 subprocess 模块用于启动和关闭 mitmdump
 from mitmproxy import http
 
-from apps import current_file, now_path_current_file
+from apps import current_file, now_path_current_file, logger
 
 # 用于存储所有 base64 编码的字符串
 base64_list = []
 search_list = []
+
 
 # now_path_current_file = Path(current_file, 'manage')
 

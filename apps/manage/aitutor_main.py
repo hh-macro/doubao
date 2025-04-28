@@ -667,8 +667,11 @@ class MongoDocProcessor:
             file_name_base = os.path.basename(target_dir_new)
             file_path_dir = os.path.dirname(target_dir_new)
             print('-' * 40)
-            detection_coord(file_name_base, target_dir_new)  # 发起请求, 保存总坐标 注：只开发环境使用
-
+            try:
+                print('总坐标功能仅供测试...开发环境不启用')
+                # detection_coord(file_name_base, target_dir_new)  # 发起请求, 保存总坐标 注：只开发环境使用
+            except Exception as e:
+                logger.error(f'请求发送失败 ---->   {e}')
             destination_folder = rf"{source_file_all}\{file_name_base}.jpg"
             source_image = rf'{aresult}\{self._parse_timestamp()}\{file_name_base}\{file_name_base}.jpg'
             print(destination_folder)

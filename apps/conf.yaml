@@ -5,7 +5,7 @@ search:
 
 # ===================================== mongo配置 ======================================
 mongodb:
-  url: mongodb://localhost:27017/
+  url: mongodb://root:Aliyun_Mongo_20250218@dds-2vc3c96a7e797ee41197-pub.mongodb.cn-chengdu.rds.aliyuncs.com:3717,dds-2vc3c96a7e797ee42971-pub.mongodb.cn-chengdu.rds.aliyuncs.com:3717/admin?replicaSet=mgset-1150525521
   db: doubao
   default: data_list
   data_total: data_total
