@@ -19,6 +19,7 @@ from apps.com import adb_devices
 
 source_folder = CONF['search']['source_folder']
 degree = CONF['search']['degree']  # 上限
+source_file_all = CONF['processor']['source_file_all']  # 上限
 
 
 def time_date():
@@ -113,6 +114,9 @@ def hold_folder():
     d.implicitly_wait(3)
 
     target_folder = "/storage/emulated/0/DCIM"
+
+    if not os.path.exists(source_file_all):  # 判文件夹是否存在
+        os.makedirs(source_file_all)
 
     # create_parent_and_children()  # 创建文件夹
     clear_directory(target_folder)  # 第一次清空手机目录
@@ -216,8 +220,7 @@ def hold_folder():
                     if not aog_page:
                         print(f'页面题目结果一共{io - 1}道题目')
                         time.sleep(20)
-                        destination_path = r'D:\atimu_all'
-                        shutil.copy2(item, destination_path)
+                        shutil.copy2(item, source_file_all)
                         os.remove(item)  # 删除当前图片
                         break
             except Exception as e:
