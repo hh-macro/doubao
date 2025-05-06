@@ -51,7 +51,7 @@ def response(flow: http.HTTPFlow) -> None:
             print("截取到get_by_user包，但程序并未运行---为错误包")
 
     if (
-            "api5-normal-lq.hippoaixue.com" in flow.request.url and "https://api5-normal-lq.hippoaixue.com/hippo/turing/qs/v1/detection/get_or_create" in flow.request.url):
+            "https://api5-normal-lq.hippoaixue.com/hippo/turing/qs/v1/detection/get_or_create" in flow.request.url):
         time.sleep(1)
         try:
             flow_json = flow.response.json()
