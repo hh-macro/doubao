@@ -125,6 +125,7 @@ def hold_folder():
     # 遍历目录及其所有子目录
     for item in path.rglob("*"):  # rglob("*") 递归所有
         gree += 1
+        logger.info(f'当前已搜索第{gree}道题')
         if gree > degree:
             logger.success(f'当前已到达每日最大上限......')
             return

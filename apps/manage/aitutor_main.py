@@ -45,13 +45,14 @@ def re_mango():
             # print('rout_img:\t', rout_img)
             image_content = requests.get(rout_img).content
             png_name = int(time.time() * 1000000)
-            with open(rf'{aresult}/{datee_name}/{image_name}/{conversationId}/{png_name}.png', 'wb') as f:
+            path_pg = os.path.join(aresult, datee_name, image_name, conversationId, f"{png_name}.png")
+            with open(path_pg, 'wb') as f:
                 f.write(image_content)
             # print(f'{rout_img} ----保存成功')
 
             if pattern_type == 2:
-                return rf"<img src='/{aresult}/{datee_name}/{image_name}/{conversationId}/{png_name}.png' />"
-            return rf"/{aresult}/{datee_name}/{image_name}/{conversationId}/{png_name}.png"
+                return f"<img src='/{path_pg}' />"
+            return f"/{path_pg}"
         except Exception as e:
             logger.error(f"{e}-----------------图片下载发送异常--返回原值")
 
@@ -87,7 +88,7 @@ def re_mango():
                                                 analysis_text_str)
                 # else:
                 #     print("-未匹配到任何 URL (analysis)，跳过替换")
-
+            # print(new_analysis)
             # 处理answer字段
             if answer_text is not None:
                 if pattern2.search(answer_text_str):
@@ -671,7 +672,7 @@ class MongoDocProcessor:
             file_path_dir = os.path.dirname(target_dir_new)
             print('-' * 40)
             try:
-                print('总坐标功能仅供测试...开发环境不启用')
+                print('总坐标功能仅供开发测试...正式环境不启用')
                 # detection_coord(file_name_base, target_dir_new)  # 发起请求, 保存总坐标 注：只开发环境使用
             except Exception as e:
                 logger.error(f'请求发送失败 ---->   {e}')
@@ -777,8 +778,8 @@ class MongoDocProcessor:
         self.screen_local_file()
 
 
-if __name__ == '__main__':
-    # unpack(base64_str)  # 单个测试
+def aitutorMain():
+    # unpack(base64_str)  # 单个测试 | 弃用
 
     # create_parent_and_children()  # 检查父文件夹是否存在，如果不存在则创建父文件夹和所有子文件夹。 | 弃用
     logger.info("aitutor 程序启动")
@@ -807,6 +808,10 @@ if __name__ == '__main__':
     # clear_json_file(file_path="base64_strings.json")  # 删除并重新创建 base64_strings.json
 
     logger.success("所有数据已全部处理完成")
+
+
+if __name__ == '__main__':
+    aitutorMain()
 """
 第二代版本:在筛选的时候，将cardStem保留，去掉下级conText中的内容
         与第一版区别: 题目内容较为清晰, 且题目与AI解答所有页面全在一起
