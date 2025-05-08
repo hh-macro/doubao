@@ -49,6 +49,10 @@ def is_json_empty():
     bool: 如果 JSON 文件内容大于500000，则进行判断返回 False 还是返回 True。
     """
     file_path = Path(now_path_current_file, "base64_strings.json")
+    if not file_path.exists():
+        with open(file_path, "w", encoding="utf-8") as file:
+            json.dump([], file)  # 初始化为空字典
+
     try:
         with open(file_path, "r", encoding="utf-8") as file:
             data = json.load(file)
