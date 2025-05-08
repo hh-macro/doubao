@@ -45,7 +45,7 @@ def re_mango():
             # print('rout_img:\t', rout_img)
             image_content = requests.get(rout_img).content
             png_name = int(time.time() * 1000000)
-            path_pg = os.path.join(aresult, datee_name, image_name, conversationId, f"{png_name}.png")
+            path_pg = os.path.join(aresult, datee_name, image_name, conversationId, f"{png_name}.png").replace('\\', '/')
             with open(path_pg, 'wb') as f:
                 f.write(image_content)
             # print(f'{rout_img} ----保存成功')
@@ -114,7 +114,7 @@ def re_mango():
                                             rich_text_str)
                 # else:
                 #     print("-未匹配到任何 URL (stem)，跳过替换")
-
+            # print("开始更新MongoDB文档")
             # 更新MongoDB文档
             update_data = {}
             if rich_text is not None and new_text != rich_text_str:
