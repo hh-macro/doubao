@@ -160,6 +160,7 @@ def hold_folder():
                 time.sleep(2)
                 d(resourceId='com.aitutor.hippo:id/amo').click_exists(timeout=3)
                 d(text='再拍一页').click_exists(timeout=2)
+                d(text='重新拍照').click_exists(timeout=2)
                 if d(resourceId='com.aitutor.hippo:id/ax0').exists or d(text='识别错误').exists:
                     d(text='重新拍照').click_exists(timeout=3)
                 continue
